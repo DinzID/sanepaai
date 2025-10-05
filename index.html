@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sanepa AI - AI Assistant</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
        <style>
         * {
             margin: 0;
@@ -195,7 +199,7 @@
             align-items: center;
             padding: 8px;
             border-radius: 8px;
-            cursor: default; /* Change cursor to default */
+            cursor: pointer;
             transition: background-color 0.2s;
         }
 
@@ -219,144 +223,6 @@
             color: white;
             font-weight: bold;
             margin-right: 12px;
-        }
-
-        /* Auth Modal Styles */
-        .auth-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            display: none; /* Hidden by default */
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-
-        .auth-modal.show {
-            display: flex;
-        }
-
-        .auth-container {
-            background: var(--surface-light);
-            padding: 24px;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: var(--shadow-lg);
-            border: 1px solid var(--border-light);
-        }
-
-        body[data-theme="dark"] .auth-container,
-        body[data-theme="purple"] .auth-container {
-            background: var(--surface-dark);
-            border-color: var(--border-dark);
-        }
-
-        .auth-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .auth-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--primary);
-        }
-
-        .auth-close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: var(--text-light);
-        }
-
-        .auth-form-group {
-            margin-bottom: 16px;
-        }
-
-        .auth-form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .auth-input {
-            width: 100%;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid var(--border-light);
-            background: var(--bg-light);
-            color: var(--text-light);
-            font-size: 1rem;
-        }
-
-        body[data-theme="dark"] .auth-input,
-        body[data-theme="purple"] .auth-input {
-            background: var(--bg-dark);
-            border-color: var(--border-dark);
-            color: var(--text-dark);
-        }
-
-        .auth-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .auth-btn {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-            font-size: 1rem;
-            transition: all 0.2s;
-        }
-
-        .auth-btn.primary {
-            background: var(--primary);
-            color: white;
-        }
-        .auth-btn.primary:hover {
-            background: var(--primary-dark);
-        }
-
-        .auth-error {
-            color: var(--error);
-            margin-top: 12px;
-            text-align: center;
-            font-size: 0.9rem;
-            display: none; /* Hidden by default */
-        }
-
-        #schedule-editor-admin .day-container {
-            border: 1px solid var(--border-light);
-            border-radius: 8px;
-            padding: 12px;
-        }
-
-        #schedule-editor-admin h4 {
-            margin-top: 0;
-            margin-bottom: 10px;
-            color: var(--primary);
-        }
-
-        #schedule-editor-admin textarea {
-            width: 100%;
-            min-height: 120px;
-            resize: vertical;
-            padding: 8px;
-            border-radius: 6px;
-            border: 1px solid var(--border-light);
-            background: var(--bg-light);
-            color: var(--text-light);
         }
 
         /* Main Chat Area */
@@ -764,14 +630,9 @@
 
         .input-actions {
             display: flex;
-            align-items: flex-end;
-            padding: 0 8px 4px;
+            align-items: center;
+            padding: 0 8px;
             gap: 5px;
-        }
-
-        #sendBtn {
-            position: relative;
-            z-index: 2;
         }
 
         .action-btn {
@@ -1723,14 +1584,16 @@
             align-items: center;
             gap: 12px;
         }
-    </style>
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-    <!-- Your Firebase configuration -->
-    <script src="firebase-config.js"></script>
+        /* PERBAIKAN: Pastikan tombol send selalu terlihat */
+        #sendBtn {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            position: relative !important;
+            z-index: 1 !important;
+        }
+    </style>
 </head>
 <body data-theme="light">
     <div class="container">
@@ -1761,7 +1624,7 @@
                         <div class="user-info" style="flex: 1;">
                             <div class="user-name" id="user-display-name">User</div>
                         </div>
-                        <button id="logout-btn" class="action-btn" title="Logout">
+                        <button id="logout-btn" class="action-btn" title="Logout" style="display: none;">
                             <i class="fas fa-sign-out-alt"></i>
                         </button>
                     </div>
@@ -1830,12 +1693,6 @@
     <div class="dropdown-divider"></div>
     <div class="dropdown-item" id="edit-prompt-btn">Edit Custom Prompt</div>
     <div class="dropdown-item" id="edit-schedule-btn">Edit Jadwal Pelajaran</div>
-    <div id="admin-settings-btn-container" class="hidden">
-        <div class="dropdown-divider"></div>
-        <div class="dropdown-item" id="admin-settings-btn">
-            <i class="fas fa-user-shield"></i> Pengaturan Admin
-        </div>
-    </div>
     <div class="dropdown-divider"></div>
     <!-- TAMBAH INI -->
     <div class="dropdown-item" id="notification-settings-btn">
@@ -2058,56 +1915,6 @@
         </div>
     </div>
     
-    <!-- Admin Settings Modal -->
-    <div id="admin-settings-modal" class="modal-overlay">
-        <div class="nano-banana-container" style="max-width: 700px;">
-            <div class="nano-banana-header">
-                <div class="nano-banana-title"><i class="fas fa-user-shield"></i> Pengaturan Admin</div>
-                <button class="nano-banana-close" id="admin-settings-close">&times;</button>
-            </div>
-            <div id="admin-settings-content">
-                <h3 style="margin-bottom: 15px;">Edit Jadwal Pelajaran</h3>
-                <div id="schedule-editor-admin" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-                    <!-- Textareas for each day will be generated by JS -->
-                </div>
-
-                <h3 style="margin-top: 20px; margin-bottom: 15px;">Edit Prompt Mode Guru</h3>
-                <textarea id="admin-guru-prompt" class="nano-prompt-input" style="min-height: 150px;"></textarea>
-
-                <div class="nano-actions" style="margin-top: 20px;">
-                    <button class="nano-btn primary" id="admin-save-settings-btn">
-                        <i class="fas fa-save"></i> Simpan Semua Pengaturan
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Auth Modal -->
-    <div class="auth-modal" id="auth-modal">
-        <div class="auth-container">
-            <div class="auth-header">
-                <h3 class="auth-title">Login atau Daftar</h3>
-                <button class="auth-close" id="auth-close-btn">&times;</button>
-            </div>
-            <form id="auth-form">
-                <div class="auth-form-group">
-                    <label for="auth-email">Email</label>
-                    <input type="email" id="auth-email" class="auth-input" required>
-                </div>
-                <div class="auth-form-group">
-                    <label for="auth-password">Password</label>
-                    <input type="password" id="auth-password" class="auth-input" required>
-                </div>
-                <div class="auth-actions">
-                    <button type="button" id="login-btn" class="auth-btn primary">Login</button>
-                    <button type="button" id="register-btn" class="auth-btn">Daftar</button>
-                </div>
-                <p class="auth-error" id="auth-error"></p>
-            </form>
-        </div>
-    </div>
-
     <!-- Prompt Editor Modal -->
     <div id="prompt-editor" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
         <div style="background: var(--surface-light); padding: 20px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto;">
@@ -2129,6 +1936,9 @@
         <div id="notificationMessage">Pesan notifikasi</div>
     </div>
     
+    <!-- Your Firebase configuration -->
+    <script src="firebase-config.js"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // DOM Elements
@@ -2471,10 +2281,14 @@ async function sendGPT4oMessage(systemPrompt, message, imageData = null) {
                 }
             });
             
+            function updateSendButtonState() {
+                sendBtn.disabled = chatInput.value.trim() === '' && !chatImage;
+            }
+
             chatInput.addEventListener('input', function() {
                 this.style.height = 'auto';
                 this.style.height = (this.scrollHeight) + 'px';
-                sendBtn.disabled = this.value.trim() === '' && !chatImage;
+                updateSendButtonState();
             });
             
             imageUploadBtn.addEventListener('click', () => imageUploadInput.click());
@@ -2647,33 +2461,6 @@ function closeNotificationSettings() {
 initializeChat();
 initializeNotifications(); // TAMBAH INI
 
-            // Adjust chat container padding to avoid overlap with sticky input on mobile
-            const inputContainer = document.querySelector('.input-container');
-
-            function adjustChatContainerPadding() {
-                // This function is primarily for mobile view where the input is sticky
-                if (window.innerWidth <= 768) {
-                    const inputHeight = inputContainer.offsetHeight;
-                    chatContainer.style.paddingBottom = `${inputHeight}px`;
-                    chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom after padding adjustment
-                } else {
-                    // Reset padding for desktop view to its default
-                    chatContainer.style.paddingBottom = '24px';
-                }
-            }
-
-            // Adjust on initial load
-            adjustChatContainerPadding();
-
-            // Adjust whenever the window is resized
-            window.addEventListener('resize', adjustChatContainerPadding);
-
-            // Use a ResizeObserver to detect changes in the input container's height
-            // (e.g., when the textarea grows) and adjust padding accordingly.
-            const resizeObserver = new ResizeObserver(adjustChatContainerPadding);
-            resizeObserver.observe(inputContainer);
-
-
             // Functions
             function initializeChat() {
                 if (!currentChatId) {
@@ -2688,6 +2475,7 @@ initializeNotifications(); // TAMBAH INI
                         addMessageToUI(msg.content, msg.role, msg.image);
                     });
                 }
+                updateSendButtonState(); // Set initial button state
             }
 
             function sendMessage() {
@@ -2710,7 +2498,6 @@ initializeNotifications(); // TAMBAH INI
     const originalMessage = chatInput.value;
     chatInput.value = '';
     chatInput.style.height = 'auto';
-    sendBtn.disabled = true;
     
     showTypingIndicator();
     clearMediaPreview();
@@ -2953,62 +2740,40 @@ async function sendOtherModelMessage(systemPrompt, userMessageText) {
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             }
             
-async function saveMessage(content, role, imageData = null) {
-    const user = auth.currentUser;
-    const timestamp = new Date().toISOString();
-    const message = {
+            // Optional: Simpan session info di user profile juga
+function saveMessage(content, role, imageData = null) {
+    if (!userProfile.conversations[currentChatId]) {
+        userProfile.conversations[currentChatId] = {
+            id: currentChatId,
+            title: content.substring(0, 30) + (content.length > 30 ? '...' : ''),
+            timestamp: new Date().toISOString(),
+            messages: [],
+            lastSessionId: currentSessionId // Simpan sessionId terakhir
+        };
+    }
+
+    // Update lastSessionId
+    userProfile.conversations[currentChatId].lastSessionId = currentSessionId;
+
+    // Jangan simpan imageData di localStorage karena terlalu besar
+    userProfile.conversations[currentChatId].messages.push({
         role: role,
         content: content,
-        timestamp: timestamp,
-        image: null // Image data is not saved to DB to save space
-    };
+        image: null,
+        timestamp: new Date().toISOString(),
+        sessionId: currentSessionId // Simpan sessionId untuk setiap message
+    });
 
-    if (user) {
-        // --- Logged-in user: Save to Firestore ---
-        const chatRef = db.collection('chats').doc(currentChatId);
-        const messagesRef = chatRef.collection('messages');
-        const userChatMetaRef = db.collection('users').doc(user.uid).collection('conversations').doc(currentChatId);
-
-        try {
-            // Add the new message to the 'messages' subcollection
-            await messagesRef.add(message);
-
-            // Check if this is the first message to create/update metadata
-            const metaDoc = await userChatMetaRef.get();
-            if (!metaDoc.exists) {
-                await userChatMetaRef.set({
-                    title: content.substring(0, 30) + (content.length > 30 ? '...' : ''),
-                    timestamp: timestamp
-                });
-            } else {
-                 await userChatMetaRef.update({ timestamp: timestamp });
-            }
-            loadChatHistory(); // Refresh history
-        } catch (error) {
-            console.error("Error saving message to Firestore:", error);
-            showNotification("Gagal menyimpan pesan ke cloud.", "error");
-        }
-    } else {
-        // --- Guest user: Save to localStorage ---
-        if (!userProfile.conversations[currentChatId]) {
-            userProfile.conversations[currentChatId] = {
-                id: currentChatId,
-                title: content.substring(0, 30) + (content.length > 30 ? '...' : ''),
-                timestamp: timestamp,
-                messages: []
-            };
-        }
-        userProfile.conversations[currentChatId].messages.push(message);
-        userProfile.conversations[currentChatId].timestamp = timestamp;
-
-        try {
-            localStorage.setItem('sanepAI_userProfile', JSON.stringify(userProfile));
-        } catch (error) {
-            console.error('LocalStorage error:', error);
-            clearOldConversations();
-        }
-        loadChatHistory(); // Refresh history
+    // Save to localStorage
+    try {
+        localStorage.setItem('sanepAI_userProfile', JSON.stringify(userProfile));
+    } catch (error) {
+        console.error('LocalStorage error:', error);
+        clearOldConversations();
     }
+
+    // Update chat history UI
+    loadChatHistory();
 }
 
 // Fungsi untuk clear conversation lama
@@ -3099,6 +2864,7 @@ function clearOldConversations() {
     reader.onload = (event) => {
         chatImage = event.target.result;
         showMediaPreview(chatImage, file.name);
+        updateSendButtonState(); // Update button state after adding image
     };
     reader.onerror = (error) => {
         console.error('Error reading file:', error);
@@ -3128,7 +2894,8 @@ function clearOldConversations() {
     mediaPreview.innerHTML = '';
     mediaPreview.classList.add('hidden');
     imageUploadInput.value = '';
-    // Jangan reset chatImage di sini, karena masih dibutuhkan untuk sendMessage
+    chatImage = null; // Reset the image data
+    updateSendButtonState(); // Update button state after removing image
 }
             
             function toggleTheme() {
@@ -3260,24 +3027,12 @@ if (typeof window.showNotification === 'undefined') {
 window.showNotification = showNotification;
 }
             
-            async function loadChatHistory() {
-                const user = auth.currentUser;
+            function loadChatHistory() {
                 chatHistory.innerHTML = '';
-                let conversations = [];
 
-                if (user) {
-                    // --- Logged-in User ---
-                    const convRef = db.collection('users').doc(user.uid).collection('conversations');
-                    const snapshot = await convRef.orderBy('timestamp', 'desc').limit(15).get();
-                    snapshot.forEach(doc => {
-                        conversations.push({ id: doc.id, ...doc.data() });
-                    });
-                } else {
-                    // --- Guest User ---
-                    conversations = Object.values(userProfile.conversations)
-                        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-                        .slice(0, 10);
-                }
+                const conversations = Object.values(userProfile.conversations)
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                    .slice(0, 10); // Show only last 10 conversations
 
                 conversations.forEach(chat => {
                     const chatItem = document.createElement('div');
@@ -3291,42 +3046,37 @@ window.showNotification = showNotification;
                             </div>
                         </div>
                     `;
-                    chatItem.addEventListener('click', () => loadChat(chat.id));
+
+                    chatItem.addEventListener('click', () => {
+                        loadChat(chat.id);
+                    });
+
                     chatHistory.appendChild(chatItem);
                 });
             }
 
-            async function loadChat(chatId) {
-                const user = auth.currentUser;
+            function loadChat(chatId) {
+                const conversation = userProfile.conversations[chatId];
+                if (!conversation) return;
+
+                // Clear current chat
+                const messages = document.querySelectorAll('.message-container');
+                messages.forEach(msg => msg.remove());
+
+                // Hide welcome screen
+                welcomeScreen.style.display = 'none';
+                
+                // Set current chat ID
                 currentChatId = chatId;
 
-                // Clear current chat UI
-                chatContainer.innerHTML = ''; // Clear everything
-                welcomeScreen.style.display = 'none';
+                // Load messages
+                conversation.messages.forEach(msg => {
+                    addMessageToUI(msg.content, msg.role, msg.image);
+                });
 
-                if (user) {
-                    // --- Logged-in User: Load from Firestore ---
-                    const messagesRef = db.collection('chats').doc(chatId).collection('messages').orderBy('timestamp', 'asc');
-                    const snapshot = await messagesRef.get();
-                    if (snapshot.empty) {
-                        console.log("No messages found for this chat.");
-                    } else {
-                        snapshot.forEach(doc => {
-                            const msg = doc.data();
-                            addMessageToUI(msg.content, msg.role, msg.image);
-                        });
-                    }
-                } else {
-                    // --- Guest User: Load from localStorage ---
-                    const conversation = userProfile.conversations[chatId];
-                    if (conversation && conversation.messages) {
-                        conversation.messages.forEach(msg => {
-                            addMessageToUI(msg.content, msg.role, msg.image);
-                        });
-                    }
-                }
-                
+                // Close mobile menu
                 closeMobileMenu();
+
                 showNotification('Percakapan dimuat');
             }
             
@@ -3386,15 +3136,11 @@ window.showNotification = showNotification;
                 if (customPrompt) {
                     systemInstructions[currentMode] = customPrompt;
                     
-                    if (auth.currentUser) {
-                        saveCustomPromptToFirestore(currentMode, customPrompt);
-                    } else {
-                         localStorage.setItem('customPrompts', JSON.stringify({
-                            [currentMode]: customPrompt
-                        }));
-                        showNotification('Prompt disimpan lokal. Login untuk menyimpan ke cloud.', 'info');
-                    }
+                    localStorage.setItem('customPrompts', JSON.stringify({
+                        [currentMode]: customPrompt
+                    }));
                     
+                    showNotification('Custom prompt berhasil disimpan!');
                     closePromptEditor();
                 }
             }
@@ -4757,15 +4503,13 @@ function saveSchedule() {
         userSchedule[day] = Array.from(inputs).map(input => input.value.trim()).filter(value => value);
     });
     
-    if (auth.currentUser) {
-        saveScheduleToFirestore();
-    } else {
-        localStorage.setItem('sanepAI_userSchedule', JSON.stringify(userSchedule));
-        showNotification('Jadwal disimpan lokal. Login untuk menyimpan ke cloud.', 'info');
-    }
+    // Save to localStorage
+    localStorage.setItem('sanepAI_userSchedule', JSON.stringify(userSchedule));
     
+    showNotification('✅ Jadwal berhasil disimpan!', 'success');
     closeScheduleEditor();
     
+    // Refresh system instructions jika sedang mode guru
     if (currentMode === 'guru') {
         systemInstructions.guru = getGuruPrompt();
     }
@@ -4779,336 +4523,23 @@ function closeScheduleEditor() {
 window.addClass = addClass;
 window.removeClass = removeClass;
 
-            // ================== AUTHENTICATION LOGIC ==================
-            const authModal = document.getElementById('auth-modal');
-            const authCloseBtn = document.getElementById('auth-close-btn');
-            const loginRegisterBtn = document.getElementById('login-register-btn');
-            const logoutBtn = document.getElementById('logout-btn');
-            const loginBtn = document.getElementById('login-btn');
-            const registerBtn = document.getElementById('register-btn');
-            const authEmailInput = document.getElementById('auth-email');
-            const authPasswordInput = document.getElementById('auth-password');
-            const authError = document.getElementById('auth-error');
-            const userProfileInfo = document.getElementById('user-profile-info');
-            const userDisplayName = document.getElementById('user-display-name');
-            const userAvatar = userProfileInfo.querySelector('.user-avatar');
+        // --- Minimal Auth Logic for Admin Button ---
+        const ADMIN_UID = "fVdAMsA5s3gA9p0xJ8rY2ZtQW1i1"; // IMPORTANT: Replace with your actual Admin UID
+        const editScheduleBtn = document.getElementById('edit-schedule-btn');
 
-            // --- UI Management ---
-            function showAuthModal() {
-                authModal.classList.add('show');
-            }
-
-            function hideAuthModal() {
-                authModal.classList.remove('show');
-                authError.style.display = 'none';
-                authError.textContent = '';
-                document.getElementById('auth-form').reset();
-            }
-
-            function updateUIForLoggedInUser(user) {
-                userProfileInfo.classList.remove('hidden');
-                loginRegisterBtn.classList.add('hidden');
-                const name = user.email.split('@')[0];
-                userDisplayName.textContent = name;
-                userAvatar.textContent = (name[0] || 'U').toUpperCase();
-            }
-
-            function updateUIForLoggedOutUser() {
-                userProfileInfo.classList.add('hidden');
-                loginRegisterBtn.classList.remove('hidden');
-            }
-
-            // --- Event Listeners ---
-            loginRegisterBtn.addEventListener('click', showAuthModal);
-            authCloseBtn.addEventListener('click', hideAuthModal);
-            authModal.addEventListener('click', (e) => {
-                if (e.target === authModal) {
-                    hideAuthModal();
-                }
-            });
-
-            // --- Firebase Firestore & Auth Integration ---
-            const db = firebase.firestore();
-
-            registerBtn.addEventListener('click', () => {
-                const email = authEmailInput.value;
-                const password = authPasswordInput.value;
-                if (!email || !password) {
-                    authError.textContent = 'Email dan password tidak boleh kosong.';
-                    authError.style.display = 'block';
-                    return;
-                }
-                auth.createUserWithEmailAndPassword(email, password)
-                    .then(userCredential => {
-                        console.log('User registered:', userCredential.user.uid);
-                        createInitialFirestoreData(userCredential.user.uid);
-                        hideAuthModal();
-                    })
-                    .catch(error => {
-                        console.error('Registration error:', error);
-                        authError.textContent = `Error: ${error.message}`;
-                        authError.style.display = 'block';
-                    });
-            });
-
-            loginBtn.addEventListener('click', () => {
-                const email = authEmailInput.value;
-                const password = authPasswordInput.value;
-                if (!email || !password) {
-                    authError.textContent = 'Email dan password tidak boleh kosong.';
-                    authError.style.display = 'block';
-                    return;
-                }
-                auth.signInWithEmailAndPassword(email, password)
-                    .then(userCredential => {
-                        console.log('User logged in:', userCredential.user.uid);
-                        hideAuthModal();
-                    })
-                    .catch(error => {
-                        console.error('Login error:', error);
-                        authError.textContent = `Error: ${error.message}`;
-                        authError.style.display = 'block';
-                    });
-            });
-
-            logoutBtn.addEventListener('click', () => {
-                auth.signOut().then(() => {
-                    console.log('User logged out');
-                    showNotification('Anda telah logout.', 'info');
-                });
-            });
-
-            async function createInitialFirestoreData(uid) {
-                const userRef = db.collection('users').doc(uid);
-                const globalSettingsRef = db.collection('settings').doc('global');
-                let initialSchedule = {
-                    senin: ["07:00-08:30 Matematika", "08:30-10:00 Fisika"],
-                    selasa: ["07:00-09:00 Bahasa Inggris"],
-                    // Add other default days
-                };
-
-                try {
-                    const globalDoc = await globalSettingsRef.get();
-                    if (globalDoc.exists && globalDoc.data().defaultSchedule) {
-                        initialSchedule = globalDoc.data().defaultSchedule;
-                        console.log("Using admin-defined default schedule for new user.");
-                    }
-                } catch (error) {
-                    console.warn("Could not fetch admin default schedule, using local default.", error);
-                }
-
-                try {
-                    await userRef.set({
-                        schedule: initialSchedule,
-                        customPrompts: {}
-                    });
-                    console.log(`Initial data created for user: ${uid}`);
-                    userSchedule = initialSchedule;
-                    systemInstructions = updateSystemInstructions();
-                } catch (error) {
-                    console.error("Error creating initial user data:", error);
-                }
-            }
-
-            async function loadDataFromFirestore(uid) {
-                showNotification("Sinkronisasi data...", "info");
-                const userRef = db.collection('users').doc(uid);
-                const globalSettingsRef = db.collection('settings').doc('global');
-
-                try {
-                    const userDoc = await userRef.get();
-                    if (userDoc.exists) {
-                        const data = userDoc.data();
-                        userSchedule = data.schedule || userSchedule;
-                        if (data.customPrompts) {
-                            Object.keys(data.customPrompts).forEach(mode => {
-                                systemInstructions[mode] = data.customPrompts[mode];
-                            });
-                        }
-                    } else {
-                        await createInitialFirestoreData(uid);
-                    }
-
-                    const globalDoc = await globalSettingsRef.get();
-                    if (globalDoc.exists) {
-                        const globalData = globalDoc.data();
-                        if (globalData.guruPrompt) {
-                            systemInstructions.guru = globalData.guruPrompt;
-                        }
-                    }
-
-                    systemInstructions = updateSystemInstructions();
-                    loadChatHistory(); // Load cloud history
-                    showNotification("Data berhasil disinkronkan!", "success");
-
-                } catch (error) {
-                    console.error("Error loading data from Firestore:", error);
-                    showNotification("Gagal sinkronisasi data.", "error");
-                }
-            }
-
-            function resetToDefaultState() {
-                console.log("Resetting application state to default.");
-                userName = 'Pengguna';
-                userProfile = { name: 'Pengguna', conversations: {} };
-                userSchedule = {
-                    senin: ["07:00-08:30 Matematika", "08:30-10:00 Fisika", "10:30-12:00 Bahasa Indonesia", "13:00-14:30 Kimia", "15:00-16:30 Olahraga"],
-                    selasa: ["07:00-09:00 Bahasa Inggris", "09:30-11:00 Sejarah", "12:00-13:30 Biologi", "14:00-15:30 Seni Budaya", "16:00-17:00 Ekstrakurikuler"],
-                    rabu: ["07:00-08:30 Matematika", "09:00-10:30 TIK", "11:00-12:30 Ekonomi", "13:30-15:00 Sosiologi", "15:30-17:00 Bahasa Jawa"],
-                    kamis: ["07:30-09:00 Fisika", "09:30-11:00 Kimia", "12:00-13:30 Geografi", "14:00-15:30 PKN", "16:00-17:00 Bimbingan Konseling"],
-                    jumat: ["07:00-08:30 Agama", "09:00-11:00 Prakarya", "12:00-13:30 Bahasa Indonesia", "14:00-15:00 Sholat Jumat", "15:30-16:30 Pengembangan Diri"],
-                    sabtu: ["08:00-10:00 Les Matematika", "10:30-12:00 Les Bahasa Inggris", "13:00-15:00 Kegiatan Sosial"],
-                    minggu: ["Libur - Istirahat dan keluarga"]
-                };
-                systemInstructions = updateSystemInstructions();
-
-                chatHistory.innerHTML = '';
-                chatContainer.innerHTML = '';
-                welcomeScreen.style.display = 'flex';
-
-                if (localStorage.getItem('sanepAI_userProfile')) {
-                    try {
-                        userProfile = JSON.parse(localStorage.getItem('sanepAI_userProfile'));
-                        loadChatHistory();
-                    } catch (e) {
-                        localStorage.removeItem('sanepAI_userProfile');
-                    }
-                }
-            }
-
-            async function saveScheduleToFirestore() {
-                const user = auth.currentUser;
-                if (!user) {
-                    showNotification("Anda harus login untuk menyimpan jadwal.", "warning");
-                    return;
-                }
-                const userRef = db.collection('users').doc(user.uid);
-                try {
-                    await userRef.update({ schedule: userSchedule });
-                    showNotification("Jadwal berhasil disimpan ke cloud!", "success");
-                } catch (error) {
-                    console.error("Error saving schedule:", error);
-                    showNotification("Gagal menyimpan jadwal.", "error");
-                }
-            }
-
-            async function saveCustomPromptToFirestore(mode, prompt) {
-                const user = auth.currentUser;
-                if (!user) return; // Don't save if not logged in
-                const userRef = db.collection('users').doc(user.uid);
-                try {
-                    // Use dot notation to update a specific field in a map
-                    await userRef.update({
-                        [`customPrompts.${mode}`]: prompt
-                    });
-                    showNotification("Prompt berhasil disimpan ke cloud!", "success");
-                } catch (error) {
-                    console.error("Error saving custom prompt:", error);
-                }
-            }
-
-            // --- Admin Settings Logic ---
-            const ADMIN_UID = "fVdAMsA5s3gA9p0xJ8rY2ZtQW1i1"; // UID Admin diganti
-            const adminSettingsModal = document.getElementById('admin-settings-modal');
-            const adminSettingsBtn = document.getElementById('admin-settings-btn');
-            const adminSettingsBtnContainer = document.getElementById('admin-settings-btn-container');
-            const adminSettingsCloseBtn = document.getElementById('admin-settings-close');
-            const adminSaveSettingsBtn = document.getElementById('admin-save-settings-btn');
-            const scheduleEditorAdmin = document.getElementById('schedule-editor-admin');
-            const adminGuruPromptTextarea = document.getElementById('admin-guru-prompt');
-
-            function openAdminSettings() {
-                populateAdminPanel();
-                adminSettingsModal.classList.add('show');
-            }
-
-            function closeAdminSettings() {
-                adminSettingsModal.classList.remove('show');
-            }
-
-            function populateAdminPanel() {
-                scheduleEditorAdmin.innerHTML = '';
-                const days = ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'];
-                days.forEach(day => {
-                    const dayName = day.charAt(0).toUpperCase() + day.slice(1);
-                    const dayContainer = document.createElement('div');
-                    dayContainer.className = 'day-container';
-                    const scheduleText = userSchedule[day] ? userSchedule[day].join('\n') : '';
-                    dayContainer.innerHTML = `
-                        <h4>${dayName}</h4>
-                        <textarea id="admin-schedule-${day}" rows="5">${scheduleText}</textarea>
-                    `;
-                    scheduleEditorAdmin.appendChild(dayContainer);
-                });
-                adminGuruPromptTextarea.value = systemInstructions.guru || '';
-            }
-
-            async function saveAdminSettings() {
-                const globalSettingsRef = db.collection('settings').doc('global');
-
-                // Get new schedule from admin textareas
-                const newSchedule = {};
-                const days = ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'];
-                days.forEach(day => {
-                    const textarea = document.getElementById(`admin-schedule-${day}`);
-                    newSchedule[day] = textarea.value.split('\n').filter(line => line.trim() !== '');
-                });
-
-                const newGuruPrompt = adminGuruPromptTextarea.value;
-
-                try {
-                    await globalSettingsRef.set({
-                        defaultSchedule: newSchedule,
-                        guruPrompt: newGuruPrompt
-                    }, { merge: true }); // Merge to avoid overwriting other global settings
-
-                    // Update local data as well
-                    userSchedule = newSchedule;
-                    systemInstructions.guru = newGuruPrompt;
-                    systemInstructions = updateSystemInstructions();
-
-                    showNotification("Pengaturan global berhasil disimpan!", "success");
-                    closeAdminSettings();
-                } catch (error) {
-                    console.error("Error saving admin settings:", error);
-                    showNotification("Gagal menyimpan pengaturan admin.", "error");
-                }
-            }
-
-            adminSettingsBtn.addEventListener('click', openAdminSettings);
-            adminSettingsCloseBtn.addEventListener('click', closeAdminSettings);
-            adminSaveSettingsBtn.addEventListener('click', saveAdminSettings);
-            adminSettingsModal.addEventListener('click', (e) => {
-                if(e.target === adminSettingsModal) {
-                    closeAdminSettings();
-                }
-            });
-
-            // --- Auth State Listener ---
-            auth.onAuthStateChanged(user => {
-                const wasGuest = !auth.currentUser;
-
-                if (user) {
-                    console.log('Auth state changed: Logged in as', user.email);
-                    if (wasGuest && Object.keys(userProfile.conversations).length > 0) {
-                        showNotification("Login berhasil. Chat sebelumnya ada di perangkat ini.", "info");
-                    }
-                    updateUIForLoggedInUser(user);
-                    loadDataFromFirestore(user.uid);
-
-                    if (user.uid === ADMIN_UID) {
-                        adminSettingsBtnContainer.classList.remove('hidden');
-                    } else {
-                        adminSettingsBtnContainer.classList.add('hidden');
-                    }
+        if (typeof firebase !== 'undefined') {
+            firebase.auth().onAuthStateChanged(user => {
+                if (user && user.uid === ADMIN_UID) {
+                    // User is Admin
+                    editScheduleBtn.style.display = 'block';
                 } else {
-                    console.log('Auth state changed: Logged out');
-                    updateUIForLoggedOutUser();
-                    resetToDefaultState(); // Correctly reset the state
-                    adminSettingsBtnContainer.classList.add('hidden');
-                    closeAdminSettings();
+                    // User is not Admin or is logged out
+                    editScheduleBtn.style.display = 'none';
                 }
             });
+        } else {
+             editScheduleBtn.style.display = 'none';
+        }
         });
         
         // Fungsi untuk mendapatkan jadwal hari tertentu
