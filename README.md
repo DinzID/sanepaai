@@ -50,8 +50,6 @@ Untuk menjalankan aplikasi ini dengan semua fitur otentikasinya, Anda perlu memb
 
     // Inisialisasi Firebase
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
     ```
 
 ### Langkah 4: Aktifkan Otentikasi
@@ -72,37 +70,50 @@ Untuk menjalankan aplikasi ini dengan semua fitur otentikasinya, Anda perlu memb
 Ini adalah langkah **KRUSIAL** untuk melindungi data pengguna.
 
 1.  Di bagian Firestore Database, buka tab **"Rules"**.
-2.  Ganti aturan default dengan yang berikut ini:
+2.  Ganti aturan default dengan yang berikut ini. Aturan ini memastikan bahwa pengguna hanya dapat mengakses dan memodifikasi data mereka sendiri.
 
     ```
     rules_version = '2';
     service cloud.firestore {
       match /databases/{database}/documents {
-        // Pengguna hanya dapat membaca/menulis data mereka sendiri
-        match /users/{userId} {
-          allow read, update, write: if request.auth != null && request.auth.uid == userId;
-          allow create: if request.auth != null;
+
+        // Default: Tolak semua akses.
+        match /{document=**} {
+          allow read, write: if false;
         }
 
-        // Siapa pun dapat membaca pengaturan global (misalnya, prompt Guru default)
+        // Izinkan pengguna untuk mengelola data profil mereka sendiri (jadwal, prompt, dll.)
+        // Mereka dapat membuat dokumen pengguna mereka sendiri saat registrasi.
+        // Mereka dapat membaca dan menulis ke dokumen mereka sendiri setelah login.
+        match /users/{userId} {
+          allow read, create, write: if request.auth.uid == userId;
+        }
+
+        // Izinkan pengguna untuk membaca dan menulis HANYA ke subkoleksi 'messages'
+        // di dalam dokumen chat yang mereka miliki. Ini mencegah pengguna
+        // membaca atau menulis ke chat pengguna lain.
+        match /chats/{userId}/{chatId}/messages/{messageId} {
+            allow read, write: if request.auth.uid == userId;
+        }
+
+        // Izinkan siapa saja membaca pengaturan global (seperti jadwal default),
+        // tetapi hanya izinkan pengguna yang ditandai sebagai admin di dokumen mereka sendiri
+        // untuk menulis ke pengaturan ini.
         match /settings/global {
           allow read: if true;
-          // Hanya admin yang dapat menulis pengaturan global
-          allow write: if request.auth != null && request.auth.uid == 'fVdAMsA5s3gA9p0xJ8rY2ZtQW1i1'; // Ganti dengan UID Admin Anda
+          allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
         }
       }
     }
     ```
 
-3.  **PENTING**: Ganti `'fVdAMsA5s3gA9p0xJ8rY2ZtQW1i1'` dengan **UID Admin Anda sendiri**. (Lihat langkah berikutnya).
-4.  Klik **"Publish"**.
+3.  Klik **"Publish"**.
 
 ### Langkah 7: Dapatkan UID Admin Anda & Perbarui Kode
 
 1.  **Daftarkan akun untuk admin**: Jalankan aplikasi, buka modal login/daftar, dan daftarkan pengguna yang akan menjadi admin.
 2.  **Temukan UID**: Buka Firebase Console -> Authentication -> Users. Salin **UID** dari pengguna yang baru saja Anda daftarkan.
-3.  **Perbarui Aturan Firestore**: Tempelkan UID yang disalin ke dalam aturan keamanan Firestore yang Anda atur pada Langkah 6.
-4.  **Perbarui `index.html`**: Buka file `index.html`, cari baris `const ADMIN_UID = "fVdAMsA5s3gA9p0xJ8rY2ZtQW1i1";` dan ganti placeholder UID dengan UID Admin Anda sendiri.
+3.  **Perbarui `index.html`**: Buka file `index.html`, cari baris `const ADMIN_UID = "YOUR_ADMIN_UID_HERE";` dan ganti placeholder UID dengan UID Admin Anda sendiri.
 
 ## Cara Menjalankan
 
