@@ -1898,6 +1898,25 @@
         </div>
     </div>
     
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="modal-overlay">
+        <div class="nano-banana-container" style="max-width: 400px;">
+            <div class="nano-banana-header">
+                <div id="auth-modal-title" class="nano-banana-title">Login</div>
+                <button id="auth-modal-close" class="nano-banana-close">&times;</button>
+            </div>
+            <div id="auth-form-container" style="padding: 20px;">
+                <input type="email" id="auth-email" class="nano-url-input" placeholder="Email" autocomplete="email">
+                <input type="password" id="auth-password" class="nano-url-input" placeholder="Password" autocomplete="current-password">
+                <div id="auth-error" style="color: var(--error); margin-bottom: 15px; font-size: 14px; text-align: center; display: none;"></div>
+                <div class="nano-actions" style="flex-direction: column;">
+                    <button id="auth-action-btn" class="nano-btn primary">Login</button>
+                    <button id="auth-toggle-btn" class="nano-btn secondary" style="background: none; border: none; padding: 5px; height: auto;">Belum punya akun? Daftar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Prompt Editor Modal -->
     <div id="prompt-editor" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
         <div style="background: var(--surface-light); padding: 20px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto;">
@@ -1918,6 +1937,14 @@
         <i class="fas fa-check-circle notification-icon"></i>
         <div id="notificationMessage">Pesan notifikasi</div>
     </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- Firebase Config -->
+    <script src="firebase-config.js"></script>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -1937,6 +1964,33 @@
             const notification = document.getElementById('notification');
             const notificationMessage = document.getElementById('notificationMessage');
             const chatHistory = document.getElementById('chatHistory');
+            const userProfileElement = document.getElementById('userProfile');
+
+            // Auth Modal Elements
+            const authModal = document.getElementById('auth-modal');
+            const authModalClose = document.getElementById('auth-modal-close');
+            const authModalTitle = document.getElementById('auth-modal-title');
+            const authEmailInput = document.getElementById('auth-email');
+            const authPasswordInput = document.getElementById('auth-password');
+            const authError = document.getElementById('auth-error');
+            const authActionBtn = document.getElementById('auth-action-btn');
+            const authToggleBtn = document.getElementById('auth-toggle-btn');
+            let isLoginMode = true;
+
+            // =================================================================================
+            // == PENTING: GANTI DENGAN UID ADMIN ANDA! ==
+            // =================================================================================
+            //
+            // Untuk mengaktifkan fitur admin (seperti "Edit Jadwal Pelajaran"),
+            // Anda harus memasukkan User ID (UID) dari akun admin Anda di sini.
+            //
+            // Cara mendapatkan UID:
+            // 1. Login ke Firebase Console.
+            // 2. Pergi ke bagian "Authentication".
+            // 3. Di tab "Users", Anda akan melihat daftar pengguna. Salin UID dari akun admin.
+            //
+            // =================================================================================
+            const ADMIN_UID = "GANTI_DENGAN_UID_ADMIN_ANDA";
             
             // Model selector elements
             const modelSelectorBtn = document.getElementById('model-selector-btn');
@@ -2027,14 +2081,7 @@ let userSchedule = {
     minggu: ["Libur - Istirahat dan keluarga"]
 };
 
-// Load jadwal dari localStorage jika ada
-if (localStorage.getItem('sanepAI_userSchedule')) {
-    try {
-        userSchedule = JSON.parse(localStorage.getItem('sanepAI_userSchedule'));
-    } catch (e) {
-        console.error("Error loading user schedule:", e);
-    }
-}
+// The schedule is now loaded from Firestore. This old localStorage logic is removed.
 
             // Load user profile from localStorage
             if (localStorage.getItem('sanepAI_userProfile')) {
@@ -2716,41 +2763,66 @@ async function sendOtherModelMessage(systemPrompt, userMessageText) {
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             }
             
-            // Optional: Simpan session info di user profile juga
-function saveMessage(content, role, imageData = null) {
-    if (!userProfile.conversations[currentChatId]) {
-        userProfile.conversations[currentChatId] = {
-            id: currentChatId,
-            title: content.substring(0, 30) + (content.length > 30 ? '...' : ''),
-            timestamp: new Date().toISOString(),
-            messages: [],
-            lastSessionId: currentSessionId // Simpan sessionId terakhir
-        };
-    }
-    
-    // Update lastSessionId
-    userProfile.conversations[currentChatId].lastSessionId = currentSessionId;
-    
-    // Jangan simpan imageData di localStorage karena terlalu besar
-    userProfile.conversations[currentChatId].messages.push({
-        role: role,
-        content: content,
-        image: null,
-        timestamp: new Date().toISOString(),
-        sessionId: currentSessionId // Simpan sessionId untuk setiap message
-    });
-    
-    // Save to localStorage
-    try {
-        localStorage.setItem('sanepAI_userProfile', JSON.stringify(userProfile));
-    } catch (error) {
-        console.error('LocalStorage error:', error);
-        clearOldConversations();
-    }
-    
-    // Update chat history UI
-    loadChatHistory();
-}
+            // FIRESTORE & LOCALSTORAGE DATA MANAGEMENT
+            async function saveMessage(content, role, imageData = null) {
+                const user = auth.currentUser;
+                if (!user) {
+                    // Guest user: save to localStorage
+                    saveMessageToLocalStorage(content, role, imageData);
+                    return;
+                }
+
+                // Authenticated user: save to Firestore
+                try {
+                    const conversationRef = db.collection('users').doc(user.uid).collection('conversations').doc(currentChatId);
+                    const messageData = {
+                        role: role,
+                        content: content,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        // Image data is not saved to Firestore in this version to keep it simple
+                    };
+
+                    // Add the new message
+                    await conversationRef.collection('messages').add(messageData);
+
+                    // Update the conversation's timestamp and title
+                    await conversationRef.set({
+                        id: currentChatId,
+                        title: content.substring(0, 30) + (content.length > 30 ? '...' : ''),
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+
+                    console.log("Message saved to Firestore");
+                    loadChatHistory(); // Refresh history
+                } catch (error) {
+                    console.error("Error saving message to Firestore:", error);
+                    showNotification("Gagal menyimpan pesan ke cloud.", "error");
+                }
+            }
+
+            function saveMessageToLocalStorage(content, role, imageData) {
+                 if (!userProfile.conversations[currentChatId]) {
+                    userProfile.conversations[currentChatId] = {
+                        id: currentChatId,
+                        title: content.substring(0, 30) + (content.length > 30 ? '...' : ''),
+                        timestamp: new Date().toISOString(),
+                        messages: []
+                    };
+                }
+                userProfile.conversations[currentChatId].messages.push({
+                    role: role,
+                    content: content,
+                    image: imageData, // Local storage can handle this
+                    timestamp: new Date().toISOString()
+                });
+                try {
+                    localStorage.setItem('sanepAI_userProfile', JSON.stringify(userProfile));
+                } catch (e) {
+                    console.error('LocalStorage save error:', e);
+                    showNotification('Gagal menyimpan riwayat chat.', 'error');
+                }
+                loadChatHistory();
+            }
 
 // Fungsi untuk clear conversation lama
 function clearOldConversations() {
@@ -3001,13 +3073,41 @@ if (typeof window.showNotification === 'undefined') {
 window.showNotification = showNotification;
 }
             
-            function loadChatHistory() {
+            async function loadChatHistory() {
                 chatHistory.innerHTML = '';
-                
-                const conversations = Object.values(userProfile.conversations)
-                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-                    .slice(0, 10); // Show only last 10 conversations
-                
+                const user = auth.currentUser;
+
+                if (!user) {
+                    // Guest user: load from localStorage
+                    const conversations = Object.values(userProfile.conversations)
+                        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    displayChatHistory(conversations);
+                    return;
+                }
+
+                // Authenticated user: load from Firestore
+                try {
+                    const snapshot = await db.collection('users').doc(user.uid).collection('conversations')
+                        .orderBy('timestamp', 'desc').limit(15).get();
+
+                    const conversations = snapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return {
+                            id: doc.id,
+                            title: data.title,
+                            // Convert Firestore timestamp to JS Date for sorting
+                            timestamp: data.timestamp ? data.timestamp.toDate() : new Date()
+                        };
+                    });
+                    displayChatHistory(conversations);
+                } catch (error) {
+                    console.error("Error loading chat history from Firestore:", error);
+                    showNotification("Gagal memuat riwayat chat.", "error");
+                }
+            }
+
+            function displayChatHistory(conversations) {
+                chatHistory.innerHTML = '';
                 conversations.forEach(chat => {
                     const chatItem = document.createElement('div');
                     chatItem.className = 'chat-item';
@@ -3020,46 +3120,63 @@ window.showNotification = showNotification;
                             </div>
                         </div>
                     `;
-                    
-                    chatItem.addEventListener('click', () => {
-                        loadChat(chat.id);
-                    });
-                    
+                    chatItem.addEventListener('click', () => loadChat(chat.id));
                     chatHistory.appendChild(chatItem);
                 });
             }
             
-            function loadChat(chatId) {
-                const conversation = userProfile.conversations[chatId];
-                if (!conversation) return;
-                
-                // Clear current chat
-                const messages = document.querySelectorAll('.message-container');
-                messages.forEach(msg => msg.remove());
-                
-                // Hide welcome screen
-                welcomeScreen.style.display = 'none';
-                
-                // Set current chat ID
+            async function loadChat(chatId) {
+                const user = auth.currentUser;
                 currentChatId = chatId;
-                
-                // Load messages
-                conversation.messages.forEach(msg => {
-                    addMessageToUI(msg.content, msg.role, msg.image);
-                });
-                
-                // Close mobile menu
+
+                // Clear current chat UI
+                chatContainer.innerHTML = '';
+                welcomeScreen.style.display = 'none';
+
+                if (!user) {
+                    // Guest user: load from localStorage
+                    const conversation = userProfile.conversations[chatId];
+                    if (conversation) {
+                        conversation.messages.forEach(msg => addMessageToUI(msg.content, msg.role, msg.image));
+                    }
+                } else {
+                    // Authenticated user: load from Firestore
+                    try {
+                        const snapshot = await db.collection('users').doc(user.uid).collection('conversations')
+                            .doc(chatId).collection('messages').orderBy('timestamp', 'asc').get();
+
+                        snapshot.docs.forEach(doc => {
+                            const msg = doc.data();
+                            addMessageToUI(msg.content, msg.role);
+                        });
+                    } catch (error) {
+                        console.error("Error loading chat from Firestore:", error);
+                        showNotification("Gagal memuat percakapan.", "error");
+                    }
+                }
                 closeMobileMenu();
-                
                 showNotification('Percakapan dimuat');
             }
-            
-            function clearCurrentChat() {
-                if (userProfile.conversations[currentChatId]) {
-                    delete userProfile.conversations[currentChatId];
-                    localStorage.setItem('sanepAI_userProfile', JSON.stringify(userProfile));
+
+            async function clearCurrentChat() {
+                const user = auth.currentUser;
+                if (!user) {
+                    // Guest
+                    if (userProfile.conversations[currentChatId]) {
+                        delete userProfile.conversations[currentChatId];
+                        localStorage.setItem('sanepAI_userProfile', JSON.stringify(userProfile));
+                    }
+                } else {
+                    // Authenticated
+                    try {
+                        await db.collection('users').doc(user.uid).collection('conversations').doc(currentChatId).delete();
+                         // Note: This doesn't delete subcollections in Firestore web SDK.
+                         // A proper solution would require a Cloud Function for deep deletion.
+                         // For this scope, we'll just delete the conversation doc.
+                    } catch (error) {
+                         console.error("Error deleting conversation from Firestore:", error);
+                    }
                 }
-                
                 startNewChat();
                 showNotification('Percakapan telah dibersihkan');
             }
@@ -4468,22 +4585,46 @@ function removeClass(day, index) {
     document.getElementById('schedule-editor-content').innerHTML = generateScheduleEditorHTML();
 }
 
-function saveSchedule() {
+async function saveSchedule() {
     const days = ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'];
+    const newSchedule = {};
     
     days.forEach(day => {
         const container = document.getElementById(`schedule-${day}`);
         const inputs = container.querySelectorAll('input');
-        userSchedule[day] = Array.from(inputs).map(input => input.value.trim()).filter(value => value);
+        newSchedule[day] = Array.from(inputs).map(input => input.value.trim()).filter(value => value);
     });
     
-    // Save to localStorage
-    localStorage.setItem('sanepAI_userSchedule', JSON.stringify(userSchedule));
-    
-    showNotification('✅ Jadwal berhasil disimpan!', 'success');
-    closeScheduleEditor();
-    
-    // Refresh system instructions jika sedang mode guru
+    // Save to Firestore
+    try {
+        await db.collection('settings').doc('schedule').set(newSchedule);
+        userSchedule = newSchedule; // Update local state
+        showNotification('✅ Jadwal berhasil disimpan di Firestore!', 'success');
+        closeScheduleEditor();
+
+        // Refresh system instructions if in guru mode
+        if (currentMode === 'guru') {
+            systemInstructions.guru = getGuruPrompt();
+        }
+    } catch (error) {
+        console.error("Error saving schedule to Firestore:", error);
+        showNotification('Gagal menyimpan jadwal. Pastikan Anda adalah admin.', 'error');
+    }
+}
+
+async function loadScheduleFromFirestore() {
+    try {
+        const doc = await db.collection('settings').doc('schedule').get();
+        if (doc.exists) {
+            userSchedule = doc.data();
+            console.log("Schedule loaded from Firestore.");
+        } else {
+            console.log("No schedule found in Firestore, using default.");
+        }
+    } catch (error) {
+        console.error("Error loading schedule from Firestore:", error);
+    }
+    // Refresh system instructions if in guru mode
     if (currentMode === 'guru') {
         systemInstructions.guru = getGuruPrompt();
     }
@@ -4496,6 +4637,168 @@ function closeScheduleEditor() {
 // Export fungsi ke global
 window.addClass = addClass;
 window.removeClass = removeClass;
+
+            // ==================== AUTHENTICATION ====================
+
+            // Auth state listener
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    // User is signed in
+                    console.log("User logged in:", user.uid);
+                    userName = user.displayName || user.email.split('@')[0];
+                    updateUserNameInUI(user);
+                    authModal.classList.remove('show');
+                    loadScheduleFromFirestore(); // Load shared schedule
+                    loadChatHistory(); // Load user-specific chats
+                } else {
+                    // User is signed out
+                    console.log("User logged out.");
+                    userName = 'Pengguna (Tamu)';
+                    updateUserNameInUI(null);
+                    // For guests, we can revert to the default schedule
+                    // or clear it, depending on desired behavior.
+                    // For now, we do nothing and let the default schedule persist.
+                }
+                // Update admin features visibility
+                toggleAdminFeatures(user);
+            });
+
+            function showAuthModal(login = true) {
+                isLoginMode = login;
+                authModalTitle.textContent = isLoginMode ? 'Login' : 'Daftar';
+                authActionBtn.textContent = isLoginMode ? 'Login' : 'Daftar';
+                authToggleBtn.textContent = isLoginMode ? 'Belum punya akun? Daftar' : 'Sudah punya akun? Login';
+                authError.style.display = 'none';
+                authModal.classList.add('show');
+            }
+
+            function closeAuthModal() {
+                authModal.classList.remove('show');
+            }
+
+            async function registerUser() {
+                const email = authEmailInput.value;
+                const password = authPasswordInput.value;
+                authError.style.display = 'none';
+
+                if (password.length < 6) {
+                    authError.textContent = 'Password harus minimal 6 karakter.';
+                    authError.style.display = 'block';
+                    return;
+                }
+
+                try {
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    await userCredential.user.updateProfile({
+                        displayName: email.split('@')[0]
+                    });
+                    console.log('User registered successfully:', userCredential.user);
+                    showNotification(`Selamat datang, ${userCredential.user.displayName}!`, 'success');
+                    // The onAuthStateChanged listener will handle the rest.
+                } catch (error) {
+                    console.error("Registration error:", error);
+                    authError.textContent = mapAuthError(error.code);
+                    authError.style.display = 'block';
+                }
+            }
+
+            async function loginUser() {
+                const email = authEmailInput.value;
+                const password = authPasswordInput.value;
+                authError.style.display = 'none';
+
+                try {
+                    await auth.signInWithEmailAndPassword(email, password);
+                    console.log('User logged in successfully');
+                    showNotification('Login berhasil!', 'success');
+                    // The onAuthStateChanged listener will handle the rest.
+                } catch (error) {
+                    console.error("Login error:", error);
+                    authError.textContent = mapAuthError(error.code);
+                    authError.style.display = 'block';
+                }
+            }
+
+            function logoutUser() {
+                if (confirm('Apakah Anda yakin ingin logout?')) {
+                    auth.signOut().then(() => {
+                        showNotification('Anda telah logout.', 'info');
+                        // Reset to guest state
+                        userProfile = { name: 'Pengguna (Tamu)', conversations: {} };
+                        localStorage.removeItem('sanepAI_userProfile');
+                        startNewChat();
+                    }).catch(error => {
+                        console.error("Logout error:", error);
+                        showNotification('Gagal logout.', 'error');
+                    });
+                }
+            }
+
+            function mapAuthError(code) {
+                switch (code) {
+                    case 'auth/invalid-email':
+                        return 'Format email tidak valid.';
+                    case 'auth/user-disabled':
+                        return 'Akun ini telah dinonaktifkan.';
+                    case 'auth/user-not-found':
+                    case 'auth/wrong-password':
+                    case 'auth/invalid-credential':
+                        return 'Email atau password salah.';
+                    case 'auth/email-already-in-use':
+                        return 'Email sudah terdaftar. Silakan login.';
+                    case 'auth/weak-password':
+                        return 'Password terlalu lemah. Gunakan minimal 6 karakter.';
+                    default:
+                        return 'Terjadi kesalahan. Silakan coba lagi.';
+                }
+            }
+
+            function toggleAdminFeatures(user) {
+                const editScheduleBtn = document.getElementById('edit-schedule-btn');
+                if (editScheduleBtn) {
+                    if (user && user.uid === ADMIN_UID) {
+                        editScheduleBtn.style.display = 'block';
+                    } else {
+                        editScheduleBtn.style.display = 'none';
+                    }
+                }
+            }
+
+            // Event Listeners for Auth
+            userProfileElement.addEventListener('click', () => {
+                if (auth.currentUser) {
+                    logoutUser();
+                } else {
+                    showAuthModal(true);
+                }
+            });
+
+            authModalClose.addEventListener('click', closeAuthModal);
+            authToggleBtn.addEventListener('click', () => {
+                showAuthModal(!isLoginMode);
+            });
+            authActionBtn.addEventListener('click', () => {
+                if (isLoginMode) {
+                    loginUser();
+                } else {
+                    registerUser();
+                }
+            });
+
+            // Update UI based on user state
+            function updateUserNameInUI(user) {
+                const userNames = document.querySelectorAll('.user-name');
+                const userAvatar = document.querySelector('.user-avatar');
+                if (user) {
+                    const name = user.displayName || user.email.split('@')[0];
+                    userNames.forEach(el => el.textContent = name);
+                    userAvatar.textContent = name.charAt(0).toUpperCase();
+                } else {
+                    userNames.forEach(el => el.textContent = 'Pengguna (Tamu)');
+                    userAvatar.textContent = 'T';
+                }
+            }
+
         });
         
         // Fungsi untuk mendapatkan jadwal hari tertentu
