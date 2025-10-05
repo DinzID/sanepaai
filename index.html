@@ -626,9 +626,14 @@
 
         .input-actions {
             display: flex;
-            align-items: center;
-            padding: 0 8px;
+            align-items: flex-end;
+            padding: 0 8px 4px;
             gap: 5px;
+        }
+
+        #sendBtn {
+            position: relative;
+            z-index: 2;
         }
 
         .action-btn {
@@ -949,6 +954,8 @@
             
             .input-container {
                 padding: 12px 16px;
+                position: sticky;
+                bottom: 0;
             }
         }
 
@@ -2426,6 +2433,33 @@ function closeNotificationSettings() {
           
 initializeChat();
 initializeNotifications(); // TAMBAH INI
+
+            // Adjust chat container padding to avoid overlap with sticky input on mobile
+            const inputContainer = document.querySelector('.input-container');
+
+            function adjustChatContainerPadding() {
+                // This function is primarily for mobile view where the input is sticky
+                if (window.innerWidth <= 768) {
+                    const inputHeight = inputContainer.offsetHeight;
+                    chatContainer.style.paddingBottom = `${inputHeight}px`;
+                    chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom after padding adjustment
+                } else {
+                    // Reset padding for desktop view to its default
+                    chatContainer.style.paddingBottom = '24px';
+                }
+            }
+
+            // Adjust on initial load
+            adjustChatContainerPadding();
+
+            // Adjust whenever the window is resized
+            window.addEventListener('resize', adjustChatContainerPadding);
+
+            // Use a ResizeObserver to detect changes in the input container's height
+            // (e.g., when the textarea grows) and adjust padding accordingly.
+            const resizeObserver = new ResizeObserver(adjustChatContainerPadding);
+            resizeObserver.observe(inputContainer);
+
 
             // Functions
             function initializeChat() {
