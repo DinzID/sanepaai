@@ -577,10 +577,9 @@
             padding: 16px 24px;
             background-color: var(--surface-light);
             border-top: 1px solid var(--border-light);
-            position: sticky;
-            bottom: 0;
             width: 100%;
             z-index: 10;
+            flex-shrink: 0; /* Mencegah container menyusut */
         }
 
         body[data-theme="dark"] .input-container,
@@ -1578,15 +1577,6 @@
             display: flex;
             align-items: center;
             gap: 12px;
-        }
-
-        /* PERBAIKAN: Pastikan tombol send selalu terlihat */
-        #sendBtn {
-            display: flex !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            position: relative !important;
-            z-index: 1 !important;
         }
     </style>
 </head>
