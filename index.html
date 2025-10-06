@@ -2728,6 +2728,9 @@ function saveMessage(content, role, imageData = null) {
         };
     }
     
+    // PERBAIKAN: Selalu update timestamp agar percakapan terbaru muncul di atas
+    userProfile.conversations[currentChatId].timestamp = new Date().toISOString();
+
     // Update lastSessionId
     userProfile.conversations[currentChatId].lastSessionId = currentSessionId;
     
@@ -3001,22 +3004,47 @@ if (typeof window.showNotification === 'undefined') {
 window.showNotification = showNotification;
 }
             
+            function formatRelativeTime(isoString) {
+                const date = new Date(isoString);
+                const now = new Date();
+                const seconds = Math.round((now - date) / 1000);
+                const minutes = Math.round(seconds / 60);
+                const hours = Math.round(minutes / 60);
+                const days = Math.round(hours / 24);
+
+                if (seconds < 60) return `${seconds}d lalu`;
+                if (minutes < 60) return `${minutes}m lalu`;
+                if (hours < 24) return `${hours}j lalu`;
+                if (days < 7) return `${days}h lalu`;
+
+                return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+            }
+
             function loadChatHistory() {
                 chatHistory.innerHTML = '';
                 
                 const conversations = Object.values(userProfile.conversations)
-                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-                    .slice(0, 10); // Show only last 10 conversations
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 
                 conversations.forEach(chat => {
+                    const lastMessage = chat.messages[chat.messages.length - 1];
+                    let preview = 'Tidak ada pesan...';
+
+                    if (lastMessage) {
+                        const prefix = lastMessage.role === 'user' ? 'Anda: ' : 'AI: ';
+                        const contentPreview = lastMessage.content || '';
+                        preview = prefix + contentPreview.substring(0, 25) + (contentPreview.length > 25 ? '...' : '');
+                    }
+
                     const chatItem = document.createElement('div');
                     chatItem.className = 'chat-item';
                     chatItem.innerHTML = `
-                        <i class="fas fa-comment"></i>
-                        <div style="flex: 1;">
-                            <div style="font-weight: 500;">${chat.title}</div>
-                            <div style="font-size: 0.8rem; color: #666; margin-top: 2px;">
-                                ${new Date(chat.timestamp).toLocaleDateString('id-ID')}
+                        <i class="fas fa-comment-dots"></i>
+                        <div style="flex: 1; overflow: hidden; white-space: nowrap;">
+                            <div style="font-weight: 600; text-overflow: ellipsis; overflow: hidden;">${chat.title}</div>
+                            <div style="font-size: 0.8rem; color: #9aa0a6; margin-top: 4px; display: flex; justify-content: space-between;">
+                                <span style="text-overflow: ellipsis; overflow: hidden;">${preview}</span>
+                                <span style="flex-shrink: 0; padding-left: 8px;">${formatRelativeTime(chat.timestamp)}</span>
                             </div>
                         </div>
                     `;
