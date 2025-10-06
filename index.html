@@ -2902,23 +2902,27 @@ async function saveMessage(content, role, imageData = null) {
         role: role,
         content: content,
         timestamp: new Date().toISOString(),
-        image: null // Don't store image data in DB
+        image: null // Don't store large image data in the database
     };
 
     if (currentUser) {
-        // --- Logged-in user: Save to Firestore ---
+        // --- Logged-in user: Save to Firestore (Robust Method) ---
         const userRef = firestore.collection('users').doc(currentUser.uid);
-        const conversationPath = `conversations.${currentChatId}`;
+        try {
+            const doc = await userRef.get();
+            const userData = doc.exists ? doc.data() : {};
 
-        // Use dot notation to update nested objects in Firestore
-        await userRef.update({
-            [`${conversationPath}.id`]: currentChatId,
-            [`${conversationPath}.title`]: content.substring(0, 30) + '...',
-            [`${conversationPath}.timestamp`]: new Date().toISOString(),
-            [`${conversationPath}.messages`]: firebase.firestore.FieldValue.arrayUnion(messageData)
-        }).catch(async (error) => {
-            if (error.code === 'not-found') {
-                // If the conversation doesn't exist, create it
+            const conversationExists = userData.conversations && userData.conversations[currentChatId];
+
+            if (conversationExists) {
+                // If conversation exists, just add the new message
+                const messagesPath = `conversations.${currentChatId}.messages`;
+                await userRef.update({
+                    [messagesPath]: firebase.firestore.FieldValue.arrayUnion(messageData)
+                });
+            } else {
+                // If it's a new conversation, create it without overwriting other conversations
+                const conversationPath = `conversations.${currentChatId}`;
                 await userRef.set({
                     conversations: {
                         [currentChatId]: {
@@ -2928,9 +2932,13 @@ async function saveMessage(content, role, imageData = null) {
                             messages: [messageData]
                         }
                     }
-                }, { merge: true });
+                }, { merge: true }); // Use { merge: true } to not overwrite the whole user doc
             }
-        });
+            console.log("Message successfully saved to Firestore.");
+        } catch (error) {
+            console.error("Error saving message to Firestore:", error);
+            showNotification("Gagal menyimpan riwayat chat.", "error");
+        }
     } else {
         // --- Guest user: Save to localStorage ---
         if (!userProfile.conversations[currentChatId]) {
@@ -2945,7 +2953,7 @@ async function saveMessage(content, role, imageData = null) {
         localStorage.setItem('sanepAI_userProfile', JSON.stringify(userProfile));
     }
 
-    // Update the UI
+    // Update the chat history in the UI
     loadChatHistory();
 }
 
@@ -3300,13 +3308,23 @@ window.showNotification = showNotification;
                 closeScheduleEditor();
             }
 
-            function clearCurrentChat() {
-                if (userProfile.conversations[currentChatId]) {
-                    delete userProfile.conversations[currentChatId];
-                    localStorage.setItem('sanepAI_userProfile', JSON.stringify(userProfile));
+            async function clearCurrentChat() {
+                if (currentUser) {
+                    // Logged-in user: remove the conversation from Firestore
+                    const userRef = firestore.collection('users').doc(currentUser.uid);
+                    const conversationPath = `conversations.${currentChatId}`;
+                    await userRef.update({
+                        [conversationPath]: firebase.firestore.FieldValue.delete()
+                    });
+                } else {
+                    // Guest user: remove from localStorage
+                    if (userProfile.conversations[currentChatId]) {
+                        delete userProfile.conversations[currentChatId];
+                        localStorage.setItem('sanepAI_userProfile', JSON.stringify(userProfile));
+                    }
                 }
                 
-                startNewChat();
+                startNewChat(); // This also reloads the chat history UI
                 showNotification('Percakapan telah dibersihkan');
             }
             
@@ -3780,11 +3798,22 @@ function addMessageToUI(content, role, imageData = null) {
 }
 
 // Fungsi untuk clear semua history
-function clearAllHistory() {
-    if (confirm('Apakah Anda yakin ingin menghapus semua riwayat percakapan?')) {
-        localStorage.removeItem('sanepAI_userProfile');
-        userProfile.conversations = {};
+async function clearAllHistory() {
+    if (confirm('Apakah Anda yakin ingin menghapus semua riwayat percakapan? Tindakan ini tidak dapat diurungkan.')) {
+        if (currentUser) {
+            // Logged-in user: update the conversations field to an empty object
+            const userRef = firestore.collection('users').doc(currentUser.uid);
+            await userRef.update({
+                conversations: {}
+            });
+        } else {
+            // Guest user: remove from localStorage
+            localStorage.removeItem('sanepAI_userProfile');
+            userProfile.conversations = {};
+        }
+
         loadChatHistory();
+        startNewChat();
         showNotification('Semua riwayat percakapan telah dihapus', 'success');
     }
 }
@@ -5462,22 +5491,32 @@ window.openAuthModal = openAuthModal;
 
 // --- Firestore Data Functions ---
 async function loadUserData(user) {
+    // This function is called when a user successfully signs in.
+    // It's responsible for fetching their data and setting up the UI.
+
+    // 1. Clear any lingering guest data from localStorage to ensure a clean slate.
+    localStorage.removeItem('sanepAI_userProfile');
+    localStorage.removeItem('sanepAI_userSchedule');
+
+    // 2. Fetch the user's document from Firestore.
     const userRef = firestore.collection('users').doc(user.uid);
     const userDoc = await userRef.get();
 
     if (userDoc.exists) {
+        // If the user exists, load their data into the application's state.
         const data = userDoc.data();
         userName = data.name;
         userSchedule = data.schedule;
-        // Conversations will be loaded on-demand by loadChatHistory
     } else {
-        // This is a new user, create their document
+        // If it's a new user, create their document in Firestore with default data.
         await createUserDocument(user, user.displayName);
     }
-    // Update UI with user's name
+
+    // 3. Update the sidebar UI to show the user's profile and logout button.
     updateUserProfileUI(user);
-    // Reload chat history from Firestore
-    loadChatHistory();
+
+    // 4. Start a new chat session, which clears the chat window and loads the user's chat history from Firestore.
+    startNewChat();
 }
 
 async function createUserDocument(user, name) {
