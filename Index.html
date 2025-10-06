@@ -3229,62 +3229,51 @@ if (typeof window.showNotification === 'undefined') {
 window.showNotification = showNotification;
 }
             
-            async function loadChatHistory() {
-                chatHistory.innerHTML = ''; // Clear UI
-                let conversations = {};
+            function loadChatHistory() {
+                chatHistory.innerHTML = '';
 
-                // Determine the source of conversations
-                if (currentUser) {
-                    const userRef = firestore.collection('users').doc(currentUser.uid);
-                    const doc = await userRef.get();
-                    if (doc.exists && doc.data().conversations) {
-                        conversations = doc.data().conversations;
-                        userProfile.conversations = conversations; // Sync local state
-                    }
-                } else {
-                    const localData = localStorage.getItem('sanepAI_userProfile');
-                    if (localData) {
-                        conversations = JSON.parse(localData).conversations || {};
-                    }
-                }
+                const conversations = Object.values(userProfile.conversations)
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                    .slice(0, 10); // Show only last 10 conversations
 
-                const sortedConversations = Object.values(conversations)
-                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                conversations.forEach(chat => {
+                    const chatItem = document.createElement('div');
+                    chatItem.className = 'chat-item';
+                    chatItem.innerHTML = `
+                        <i class="fas fa-comment"></i>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500;">${chat.title}</div>
+                            <div style="font-size: 0.8rem; color: #666; margin-top: 2px;">
+                                ${new Date(chat.timestamp).toLocaleDateString('id-ID')}
+                            </div>
+                        </div>
+                    `;
 
-                if (sortedConversations.length > 0) {
-                    sortedConversations.forEach(chat => {
-                        const chatItem = document.createElement('div');
-                        chatItem.className = 'chat-item';
-                        chatItem.innerHTML = `<i class="fas fa-comment"></i> <div>${chat.title}</div>`;
-                        // Correctly call loadChat with just the ID
-                        chatItem.addEventListener('click', () => loadChat(chat.id));
-                        chatHistory.appendChild(chatItem);
+                    chatItem.addEventListener('click', () => {
+                        loadChat(chat.id);
                     });
-                    // Automatically load the latest chat if one isn't already loaded
-                    if (!currentChatId || !conversations[currentChatId]) {
-                        loadChat(sortedConversations[0].id);
-                    }
-                }
+
+                    chatHistory.appendChild(chatItem);
+                });
             }
 
-            // Corrected loadChat function
-            function loadChat(chatId) {
-                const conversation = userProfile.conversations[chatId];
-                if (!conversation) {
-                    console.error("Conversation not found:", chatId);
-                    return;
-                }
+            function loadChat(chatId, conversations) {
+                const conversation = conversations[chatId];
+                if (!conversation) return;
 
+                // Clear current chat UI
                 chatContainer.innerHTML = '';
                 welcomeScreen.style.display = 'none';
+
                 currentChatId = chatId;
 
-                if (conversation.messages) {
-                    conversation.messages.forEach(msg => {
-                        addMessageToUI(msg.content, msg.role, msg.image);
-                    });
-                }
+                // Load messages into the UI
+                conversation.messages.forEach(msg => {
+                    addMessageToUI(msg.content, msg.role, msg.image);
+                });
+
                 closeMobileMenu();
+                showNotification('Percakapan dimuat');
             }
             
             async function saveSchedule() {
@@ -3791,32 +3780,12 @@ function addMessageToUI(content, role, imageData = null) {
 }
 
 // Fungsi untuk clear semua history
-async function clearAllHistory() {
-    if (confirm('Apakah Anda yakin ingin menghapus semua riwayat percakapan? Tindakan ini tidak dapat diurungkan.')) {
-        try {
-            if (currentUser) {
-                // Logged-in user: Update Firestore
-                const userRef = firestore.collection('users').doc(currentUser.uid);
-                await userRef.update({ conversations: {} });
-            } else {
-                // Guest user: Clear localStorage
-                localStorage.removeItem('sanepAI_userProfile');
-            }
-
-            // Reset local state
-            userProfile.conversations = {};
-            currentChatId = null;
-
-            // Manually reset the UI to its initial state
-            chatHistory.innerHTML = '';
-            initializeChat(); // This will call startNewChat()
-
-            showNotification('Semua riwayat percakapan telah berhasil dihapus.', 'success');
-
-        } catch (error) {
-            console.error("Gagal menghapus semua riwayat:", error);
-            showNotification('Gagal menghapus riwayat. Silakan coba lagi.', 'error');
-        }
+function clearAllHistory() {
+    if (confirm('Apakah Anda yakin ingin menghapus semua riwayat percakapan?')) {
+        localStorage.removeItem('sanepAI_userProfile');
+        userProfile.conversations = {};
+        loadChatHistory();
+        showNotification('Semua riwayat percakapan telah dihapus', 'success');
     }
 }
 
