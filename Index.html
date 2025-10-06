@@ -1,0 +1,2582 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sanepa AI - AI Assistant</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="./firebase-config.js"></script>
+       <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        :root {
+            --primary: #1a73e8;
+            --primary-dark: #0d47a1;
+            --secondary: #fbbc04;
+            --bg-light: #f8f9fa;
+            --bg-dark: #202124;
+            --surface-light: #ffffff;
+            --surface-dark: #303134;
+            --text-light: #202124;
+            --text-dark: #e8eaed;
+            --border-light: #dadce0;
+            --border-dark: #5f6368;
+            --success: #34a853;
+            --warning: #f9ab00;
+            --error: #ea4335;
+            --shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+            --shadow-lg: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
+        }
+
+        /* Tema Ungu (Baru) */
+        [data-theme="purple"] {
+            --primary: #8a3ab9;
+            --primary-dark: #6a2a8a;
+            --secondary: #4c68d7;
+            --accent: #fbad50;
+            --bg-light: #0f0f1a;
+            --bg-dark: #0a0a12;
+            --surface-light: #1a1a2e;
+            --surface-dark: #2a2a3a;
+            --text-light: #f8f9fa;
+            --text-dark: #e8eaed;
+            --border-light: #5f6368;
+            --border-dark: #5f6368;
+        }
+
+        body {
+            background-color: var(--bg-light);
+            color: var(--text-light);
+            min-height: 100vh;
+            /* overflow: hidden; */ /* Dihapus untuk memperbaiki masalah pemotongan pada seluler */
+            transition: all 0.3s ease;
+        }
+
+        body[data-theme="dark"] {
+            background-color: var(--bg-dark);
+            color: var(--text-dark);
+        }
+
+        body[data-theme="purple"] {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-light) 50%, #1a1a2e 100%);
+            color: var(--text-light);
+        }
+
+        body[data-theme="purple"]::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 10% 20%, rgba(138, 58, 185, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(76, 104, 215, 0.15) 0%, transparent 40%);
+            z-index: -1;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 280px;
+            background-color: var(--surface-light);
+            border-right: 1px solid var(--border-light);
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s;
+            z-index: 100;
+        }
+
+        body[data-theme="dark"] .sidebar,
+        body[data-theme="purple"] .sidebar {
+            background-color: var(--surface-dark);
+            border-right-color: var(--border-dark);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        body[data-theme="dark"] .sidebar-header,
+        body[data-theme="purple"] .sidebar-header {
+            border-bottom-color: var(--border-dark);
+        }
+
+        .logo-text {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        body[data-theme="purple"] .logo-text {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .new-chat-btn {
+            margin: 16px;
+            padding: 12px 16px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-weight: 500;
+        }
+
+        .new-chat-btn:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .new-chat-btn i {
+            margin-right: 8px;
+        }
+
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .chat-item {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+
+        .chat-item:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        body[data-theme="dark"] .chat-item:hover,
+        body[data-theme="purple"] .chat-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .chat-item i {
+            margin-right: 12px;
+            color: var(--primary);
+        }
+
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid var(--border-light);
+        }
+
+        body[data-theme="dark"] .sidebar-footer,
+        body[data-theme="purple"] .sidebar-footer {
+            border-top-color: var(--border-dark);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .user-profile:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        body[data-theme="dark"] .user-profile:hover,
+        body[data-theme="purple"] .user-profile:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin-right: 12px;
+        }
+
+        /* Main Chat Area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .chat-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: var(--surface-light);
+            min-height: 60px;
+        }
+
+        body[data-theme="dark"] .chat-header,
+        body[data-theme="purple"] .chat-header {
+            background-color: var(--surface-dark);
+            border-bottom-color: var(--border-dark);
+        }
+
+        .chat-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        body[data-theme="purple"] .chat-title {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .header-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: inherit;
+            transition: background-color 0.2s;
+        }
+
+        .header-btn:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        body[data-theme="dark"] .header-btn:hover,
+        body[data-theme="purple"] .header-btn:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 24px 0; /* Ubah padding untuk menghapus padding-bottom statis */
+            display: flex;
+            flex-direction: column;
+            scroll-behavior: smooth;
+            transition: padding-bottom 0.2s ease-in-out; /* Tambahkan transisi untuk kehalusan */
+        }
+
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .welcome-title {
+            font-size: 32px;
+            font-weight: 300;
+            margin-bottom: 16px;
+        }
+
+        body[data-theme="purple"] .welcome-title {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .welcome-subtitle {
+            font-size: 16px;
+            color: #5f6368;
+            max-width: 600px;
+            margin-bottom: 32px;
+        }
+
+        body[data-theme="dark"] .welcome-subtitle {
+            color: #9aa0a6;
+        }
+
+        body[data-theme="purple"] .welcome-subtitle {
+            color: #a0a0b0;
+        }
+
+        .capabilities {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            width: 100%;
+            max-width: 800px;
+            margin-top: 24px;
+        }
+
+        .capability-card {
+            padding: 16px;
+            border-radius: 12px;
+            background-color: var(--surface-light);
+            box-shadow: var(--shadow);
+            text-align: left;
+        }
+
+        body[data-theme="dark"] .capability-card {
+            background-color: var(--surface-dark);
+        }
+
+        body[data-theme="purple"] .capability-card {
+            background-color: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .capability-card i {
+            font-size: 20px;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+
+        .capability-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .capability-desc {
+            font-size: 14px;
+            color: #5f6368;
+        }
+
+        body[data-theme="dark"] .capability-desc {
+            color: #9aa0a6;
+        }
+
+        body[data-theme="purple"] .capability-desc {
+            color: #a0a0b0;
+        }
+
+        /* Chat Messages */
+        .message-container {
+            display: flex;
+            margin-bottom: 24px;
+            max-width: 100%;
+        }
+
+        .user-message {
+            justify-content: flex-end;
+        }
+
+        .bot-message {
+            justify-content: flex-start;
+        }
+
+        .welcome-icon img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+        }
+
+        .message-avatar img {
+            width: 20px;
+            height: 20px;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 12px;
+            flex-shrink: 0;
+        }
+
+        .user-message .message-avatar {
+            background-color: var(--primary);
+            color: white;
+            order: 2;
+        }
+
+        .bot-message .message-avatar {
+            background: none;
+            color: white;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            position: relative;
+            box-shadow: var(--shadow);
+        }
+
+        .user-message .message-content {
+            background-color: var(--primary);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .bot-message .message-content {
+            background-color: var(--surface-light);
+            border-bottom-left-radius: 4px;
+        }
+
+        body[data-theme="dark"] .bot-message .message-content {
+            background-color: var(--surface-dark);
+        }
+
+        body[data-theme="purple"] .bot-message .message-content {
+            background-color: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .message-image {
+            max-width: 100%;
+            border-radius: 8px;
+            border: 2px solid var(--primary);
+            margin-top: 5px;
+        }
+
+        .message-text {
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .message-text a {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        /* Enhanced Code Block Styles */
+        .code-block-container {
+            background: #1e1e1e;
+            border-radius: 8px;
+            margin: 12px 0;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #2d2d2d;
+            border-bottom: 1px solid #333;
+            font-size: 12px;
+            color: #ccc;
+        }
+
+        .code-language {
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .copy-code-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            padding: 4px 8px;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .copy-code-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .copy-code-btn.copied {
+            background: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            margin: 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            tab-size: 4;
+        }
+
+        /* Basic Syntax Highlighting */
+        .code-block .keyword { color: #569cd6; }
+        .code-block .string { color: #ce9178; }
+        .code-block .comment { color: #6a9955; }
+        .code-block .function { color: #dcdcaa; }
+        .code-block .number { color: #b5cea8; }
+        .code-block .operator { color: #d4d4d4; }
+        .code-block .class { color: #4ec9b0; }
+        .code-block .variable { color: #9cdcfe; }
+
+        /* Theme Compatibility */
+        body[data-theme="light"] .code-block-container {
+            background: #f8f9fa;
+            border-color: #e9ecef;
+        }
+
+        body[data-theme="light"] .code-header {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        body[data-theme="light"] .code-block {
+            background: #f8f9fa;
+            color: #212529;
+        }
+
+        body[data-theme="light"] .copy-code-btn {
+            background: rgba(0, 0, 0, 0.05);
+            border-color: rgba(0, 0, 0, 0.1);
+            color: #495057;
+        }
+
+        /* PERBAIKAN UTAMA: Input Container Styles */
+        .input-container {
+            padding: 16px 24px;
+            background-color: var(--surface-light);
+            border-top: 1px solid var(--border-light);
+            /* Properti sticky dipindahkan ke media query seluler */
+            width: 100%;
+            z-index: 10;
+        }
+
+        body[data-theme="dark"] .input-container,
+        body[data-theme="purple"] .input-container {
+            background-color: var(--surface-dark);
+            border-top-color: var(--border-dark);
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: flex-end;
+            background-color: var(--bg-light);
+            border-radius: 24px;
+            padding: 8px;
+            border: 1px solid var(--border-light);
+            transition: border-color 0.2s, box-shadow 0.2s;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        body[data-theme="dark"] .input-wrapper,
+        body[data-theme="purple"] .input-wrapper {
+            background-color: var(--bg-dark);
+            border-color: var(--border-dark);
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+        }
+
+        .chat-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            padding: 8px 12px;
+            background: transparent;
+            resize: none;
+            font-size: 16px;
+            color: inherit;
+            max-height: 120px;
+            min-height: 24px;
+        }
+
+        .input-actions {
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            gap: 5px;
+        }
+
+        .action-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #5f6368;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        body[data-theme="dark"] .action-btn,
+        body[data-theme="purple"] .action-btn {
+            color: #9aa0a6;
+        }
+
+        .action-btn:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            color: var(--primary);
+        }
+
+        body[data-theme="dark"] .action-btn:hover,
+        body[data-theme="purple"] .action-btn:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .send-btn {
+            background-color: var(--primary);
+            color: white;
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        .send-btn:hover {
+            background-color: var(--primary-dark);
+            color: white;
+        }
+
+        .send-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        body[data-theme="dark"] .send-btn:disabled,
+        body[data-theme="purple"] .send-btn:disabled {
+            background-color: #5f6368;
+        }
+
+        .media-preview {
+            display: flex;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+            padding: 8px;
+            margin-top: 8px;
+            max-width: 200px;
+        }
+
+        body[data-theme="dark"] .media-preview,
+        body[data-theme="purple"] .media-preview {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .media-preview img {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-right: 12px;
+        }
+
+        .media-preview-info {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        .media-preview-actions {
+            display: flex;
+        }
+
+        .media-preview-btn {
+            background: none;
+            border: none;
+            color: var(--error);
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        .media-preview-btn i {
+            margin-right: 4px;
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background-color: var(--surface-light);
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+            box-shadow: var(--shadow);
+            max-width: 70%;
+            margin-bottom: 24px;
+        }
+
+        body[data-theme="dark"] .typing-indicator {
+            background-color: var(--surface-dark);
+        }
+
+        body[data-theme="purple"] .typing-indicator {
+            background-color: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #5f6368;
+            margin: 0 2px;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        body[data-theme="dark"] .typing-dot,
+        body[data-theme="purple"] .typing-dot {
+            background-color: #9aa0a6;
+        }
+
+        .typing-dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes typing {
+            0%, 80%, 100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Model Selector */
+        .model-selector {
+            position: relative;
+            display: inline-block;
+        }
+
+        .model-selector-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+
+        .model-list {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: var(--surface-light);
+            min-width: 200px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border-light);
+        }
+
+        body[data-theme="dark"] .model-list,
+        body[data-theme="purple"] .model-list {
+            background-color: var(--surface-dark);
+            border-color: var(--border-dark);
+        }
+
+        .model-list.is-open {
+            display: block;
+        }
+
+        .model-item {
+            color: var(--text-light);
+            padding: 8px 12px;
+            text-decoration: none;
+            display: block;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 0.9rem;
+        }
+
+        body[data-theme="dark"] .model-item,
+        body[data-theme="purple"] .model-item {
+            color: var(--text-dark);
+        }
+
+        .model-item:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        body[data-theme="dark"] .model-item:hover,
+        body[data-theme="purple"] .model-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .model-item.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background-color: var(--border-light);
+            margin: 5px 0;
+        }
+
+        body[data-theme="dark"] .dropdown-divider,
+        body[data-theme="purple"] .dropdown-divider {
+            background-color: var(--border-dark);
+        }
+
+        /* Settings Menu */
+        .settings-menu {
+            position: relative;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: var(--surface-light);
+            min-width: 200px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border-light);
+        }
+
+        body[data-theme="dark"] .dropdown-content,
+        body[data-theme="purple"] .dropdown-content {
+            background-color: var(--surface-dark);
+            border-color: var(--border-dark);
+        }
+
+        .dropdown-content.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            color: var(--text-light);
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        body[data-theme="dark"] .dropdown-item,
+        body[data-theme="purple"] .dropdown-item {
+            color: var(--text-dark);
+        }
+
+        .dropdown-item:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        body[data-theme="dark"] .dropdown-item:hover,
+        body[data-theme="purple"] .dropdown-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .dropdown-item.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                left: -280px;
+                height: 100%;
+                box-shadow: var(--shadow-lg);
+            }
+
+            .sidebar.open {
+                left: 0;
+            }
+
+            .mobile-menu-btn {
+                display: flex;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+
+            .capabilities {
+                grid-template-columns: 1fr;
+            }
+
+            .input-container {
+                padding: 12px 16px;
+                position: sticky; /* Diterapkan hanya untuk seluler */
+                bottom: 0;
+            }
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: inherit;
+            margin-right: 12px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            padding: 16px 24px;
+            border-radius: 12px;
+            background-color: var(--surface-light);
+            color: var(--text-light);
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 300px;
+            max-width: 90%;
+            text-align: center;
+            border: 1px solid var(--border-light);
+        }
+
+        body[data-theme="dark"] .notification,
+        body[data-theme="purple"] .notification {
+            background-color: var(--surface-dark);
+            color: var(--text-dark);
+            border-color: var(--border-dark);
+        }
+
+        .notification.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .notification.success {
+            border-left: 4px solid var(--success);
+            background: linear-gradient(135deg, var(--surface-light) 0%, rgba(52, 168, 83, 0.05) 100%);
+        }
+
+        .notification.error {
+            border-left: 4px solid var(--error);
+            background: linear-gradient(135deg, var(--surface-light) 0%, rgba(234, 67, 53, 0.05) 100%);
+        }
+
+        .notification.warning {
+            border-left: 4px solid var(--warning);
+            background: linear-gradient(135deg, var(--surface-light) 0%, rgba(249, 171, 0, 0.05) 100%);
+        }
+
+        .notification.info {
+            border-left: 4px solid var(--primary);
+            background: linear-gradient(135deg, var(--surface-light) 0%, rgba(26, 115, 232, 0.05) 100%);
+        }
+
+        .notification-icon {
+            margin-right: 12px;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .success .notification-icon {
+            color: var(--success);
+        }
+
+        .error .notification-icon {
+            color: var(--error);
+        }
+
+        .warning .notification-icon {
+            color: var(--warning);
+        }
+
+        .info .notification-icon {
+            color: var(--primary);
+        }
+
+        /* Mobile responsive untuk notifikasi */
+        @media (max-width: 768px) {
+            .notification {
+                top: 10px;
+                left: 50%;
+                transform: translateX(-50%) translateY(-100px);
+                min-width: 280px;
+                max-width: 95%;
+                padding: 14px 20px;
+                font-size: 14px;
+            }
+
+            .notification.show {
+                transform: translateX(-50%) translateY(0);
+            }
+
+            .notification-icon {
+                font-size: 18px;
+                margin-right: 10px;
+            }
+        }
+
+        /* Animation untuk smooth appearance */
+        @keyframes slideDown {
+            from {
+                transform: translateX(-50%) translateY(-100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(-50%) translateY(-100px);
+                opacity: 0;
+            }
+        }
+
+        .notification.show {
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .notification:not(.show) {
+            animation: slideUp 0.3s ease-in;
+        }
+
+        /* Download Button */
+        .download-btn {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            opacity: 0.8;
+        }
+
+        .download-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+            background: var(--primary-dark);
+        }
+
+        /* Close button for mobile sidebar */
+        .sidebar-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-light);
+            cursor: pointer;
+            display: none;
+        }
+
+        body[data-theme="dark"] .sidebar-close,
+        body[data-theme="purple"] .sidebar-close {
+            color: var(--text-dark);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar-close {
+                display: block;
+            }
+        }
+
+        .welcome-icon img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+        }
+
+        .logo {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            margin-right: 12px;
+        }
+
+        .logo-pure {
+            width: 40px;
+            height: 40px;
+            margin-right: 12px;
+        }
+
+        /* Nano Banana Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .nano-banana-container {
+            background: var(--surface-light);
+            border-radius: 12px;
+            padding: 20px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid var(--border-light);
+            box-shadow: var(--shadow-lg);
+        }
+
+        body[data-theme="dark"] .nano-banana-container,
+        body[data-theme="purple"] .nano-banana-container {
+            background: var(--surface-dark);
+            border-color: var(--border-dark);
+        }
+
+        .nano-banana-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        body[data-theme="dark"] .nano-banana-header,
+        body[data-theme="purple"] .nano-banana-header {
+            border-bottom-color: var(--border-dark);
+        }
+
+        .nano-banana-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .nano-banana-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+
+        body[data-theme="dark"] .nano-banana-close,
+        body[data-theme="purple"] .nano-banana-close {
+            color: var(--text-dark);
+        }
+
+        .nano-method-selector {
+            margin-bottom: 20px;
+        }
+
+        .nano-method-selector select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-light);
+            background: var(--surface-light);
+            color: var(--text-light);
+        }
+
+        body[data-theme="dark"] .nano-method-selector select,
+        body[data-theme="purple"] .nano-method-selector select {
+            background: var(--surface-dark);
+            border-color: var(--border-dark);
+            color: var(--text-dark);
+        }
+
+        .nano-file-upload-label {
+            display: block;
+            padding: 20px;
+            border: 2px dashed var(--border-light);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+        }
+
+        .nano-file-upload-label:hover {
+            border-color: var(--primary);
+            background: rgba(26, 115, 232, 0.05);
+        }
+
+        body[data-theme="dark"] .nano-file-upload-label,
+        body[data-theme="purple"] .nano-file-upload-label {
+            border-color: var(--border-dark);
+        }
+
+        .nano-file-upload-label.has-file {
+            border-color: var(--success);
+            background: rgba(52, 168, 83, 0.05);
+        }
+
+        .nano-url-input,
+        .nano-prompt-input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-light);
+            background: var(--surface-light);
+            color: var(--text-light);
+            margin-bottom: 15px;
+        }
+
+        body[data-theme="dark"] .nano-url-input,
+        body[data-theme="dark"] .nano-prompt-input,
+        body[data-theme="purple"] .nano-url-input,
+        body[data-theme="purple"] .nano-prompt-input {
+            background: var(--surface-dark);
+            border-color: var(--border-dark);
+            color: var(--text-dark);
+        }
+
+        .nano-prompt-input {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .nano-backup-option {
+            margin-bottom: 15px;
+        }
+
+        .nano-backup-option label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .nano-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .nano-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            flex: 1;
+        }
+
+        .nano-btn.primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .nano-btn.primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .nano-btn.secondary {
+            background: var(--bg-light);
+            color: var(--text-light);
+            border: 1px solid var(--border-light);
+        }
+
+        body[data-theme="dark"] .nano-btn.secondary,
+        body[data-theme="purple"] .nano-btn.secondary {
+            background: var(--bg-dark);
+            border-color: var(--border-dark);
+            color: var(--text-dark);
+        }
+
+        .nano-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .comparison-item {
+            background: var(--bg-light);
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid var(--border-light);
+        }
+
+        body[data-theme="dark"] .comparison-item,
+        body[data-theme="purple"] .comparison-item {
+            background: var(--bg-dark);
+            border-color: var(--border-dark);
+        }
+
+        .comparison-item h3 {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .comparison-image {
+            width: 100%;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+
+        .nano-loading {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .nano-loading i {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        @media (max-width: 768px) {
+            .nano-comparison {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Copy Button Styles - Updated */
+        .copy-btn-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        body[data-theme="dark"] .copy-btn-container,
+        body[data-theme="purple"] .copy-btn-container {
+            border-top-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .copy-btn {
+            background: transparent;
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            padding: 6px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        body[data-theme="dark"] .copy-btn,
+        body[data-theme="purple"] .copy-btn {
+            border-color: var(--border-dark);
+            color: var(--text-dark);
+        }
+
+        .copy-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .copy-btn.copied {
+            background: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+
+        .copy-btn i {
+            font-size: 11px;
+        }
+
+        /* Inline Code Styles */
+        .inline-code {
+            background: rgba(0, 0, 0, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #e83e8c;
+        }
+
+        body[data-theme="dark"] .inline-code,
+        body[data-theme="purple"] .inline-code {
+            background: rgba(255, 255, 255, 0.1);
+            color: #f78c6c;
+        }
+
+        /* ===== DRAFT INDICATOR STYLES ===== */
+        .draft-indicator {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            right: 0;
+            background: var(--primary);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            transform: translateY(100%);
+            opacity: 0;
+            transition: all 0.3s ease;
+            margin-bottom: 5px;
+        }
+
+        .draft-indicator.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .draft-indicator.loaded {
+            background: var(--success);
+        }
+
+        .draft-text {
+            font-weight: 500;
+        }
+
+        .draft-clear {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .draft-clear:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Image Generation Styles */
+        .image-gen-info {
+            background: rgba(138, 58, 185, 0.1);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .image-gen-info h4 {
+            margin: 0 0 8px 0;
+            color: var(--primary);
+            font-size: 14px;
+        }
+
+        .image-gen-info ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .image-gen-info li {
+            margin-bottom: 4px;
+        }
+
+        .generated-image-container {
+            position: relative;
+            margin: 15px 0;
+        }
+
+        .generated-image {
+            max-width: 100%;
+            border-radius: 12px;
+            border: 2px solid var(--border-light);
+        }
+
+        .image-metadata {
+            background: var(--bg-light);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        body[data-theme="dark"] .image-metadata,
+        body[data-theme="purple"] .image-metadata {
+            background: var(--bg-dark);
+            color: var(--text-dark);
+        }
+
+        .header-left-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Auth Modal Styles */
+        .auth-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .auth-modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .auth-container {
+            background: var(--surface-light);
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: var(--shadow-lg);
+            transform: scale(0.95);
+            transition: all 0.3s ease;
+        }
+
+        .auth-modal.show .auth-container {
+            transform: scale(1);
+        }
+
+        body[data-theme="dark"] .auth-container,
+        body[data-theme="purple"] .auth-container {
+            background: var(--surface-dark);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .auth-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .auth-form .form-group {
+            margin-bottom: 15px;
+        }
+
+        .auth-form input {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-light);
+            background: var(--bg-light);
+            color: var(--text-light);
+            font-size: 1rem;
+        }
+
+        body[data-theme="dark"] .auth-form input,
+        body[data-theme="purple"] .auth-form input {
+            background: var(--bg-dark);
+            border-color: var(--border-dark);
+            color: var(--text-dark);
+        }
+
+        .auth-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: var(--primary);
+            color: white;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .auth-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .auth-switch {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+
+        .auth-switch a {
+            color: var(--primary);
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .auth-switch a:hover {
+            text-decoration: underline;
+        }
+
+        /* PERBAIKAN: Pastikan tombol send selalu terlihat */
+        #sendBtn {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            position: relative !important;
+            z-index: 1 !important;
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <button class="sidebar-close" id="sidebarClose">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="sidebar-header">
+                <img class="logo-pure" src="https://files.catbox.moe/70gv96.png" alt="Sanepa AI Logo">
+                <div class="logo-text">Sanepa AI</div>
+            </div>
+
+            <button class="new-chat-btn" id="newChatBtn">
+                <i class="fas fa-plus"></i> Percakapan Baru
+            </button>
+
+            <div class="chat-history" id="chatHistory">
+                <!-- Chat history items will be added here dynamically -->
+            </div>
+
+            <div class="sidebar-footer">
+                <div id="user-profile-container">
+                    <!-- This will be populated by JS: either user profile or login button -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="chat-header">
+    <div class="header-left-group">
+        <button class="mobile-menu-btn" id="mobileMenuBtn">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="chat-title">Sanepa AI</div>
+    </div>
+
+    <div class="header-actions">
+                    <div class="model-selector">
+                        <button id="model-selector-btn" class="model-selector-btn">
+                            <span id="current-model-name">SanepaAi</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                  <div id="model-list" class="model-list">
+    <div class="model-item active" data-model="gemini">SanepaAi</div>
+    <div class="model-item" data-model="gpt4o">GPT-4o</div>
+    <div class="model-item" data-model="blackbox">Blackbox</div>
+    <div class="model-item" data-model="deepseek">Deepseek</div>
+    <div class="model-item" data-model="luminai">Luminai</div>
+    <div class="model-item" data-model="llama">Llama</div>
+    <div class="model-item" data-model="mistral">Mistral</div>
+    <div class="model-item" data-model="qwq">QWQ</div>
+    <div class="model-item" data-model="perplexity">Perplexity</div>
+    <div class="model-item" data-model="hutao-cai">Hutao CAI</div>
+    <div class="model-item" data-model="gemini-beta">Gemini Beta</div>
+    <div class="model-item" data-model="gpt3">GPT-3.5</div>
+    <div class="model-item" data-model="gpt4">GPT-4</div>
+    <div class="dropdown-divider"></div>
+    <!-- Tambahkan model image generation di sini -->
+    <div class="model-item" data-model="flux-pro">Flux Pro (Image)</div>
+    <div class="model-item" data-model="animagine-xl">Animagine XL 4.0 (Image)</div>
+    <div class="model-item" data-model="nano-banana">Nano Banana</div>
+    <div class="model-item" data-model="flux-image">Flux (Image)</div>
+    <div class="model-item" data-model="ghibli-image">ghibli (Image)</div>
+    <div class="model-item" data-model="videogpt-video">VideoGPT (Video)</div>
+</div>
+                    </div>
+
+                    <div class="settings-menu">
+                        <button id="settings-menu-button" class="header-btn">
+                            <i class="fas fa-sliders-h"></i>
+                        </button>
+<div id="settings-menu-dropdown" class="dropdown-content">
+    <div class="dropdown-item" data-mode="teman">Mode Teman</div>
+    <div class="dropdown-item" data-mode="asisten">Mode Asisten</div>
+    <div class="dropdown-item" data-mode="guru">Mode Guru</div>
+    <div class="dropdown-item" data-mode="pacar-biasa">Mode Pacar Biasa</div>
+    <div class="dropdown-item active" data-mode="pacar-tsundere">Mode Pacar Tsundere</div>
+    <div class="dropdown-item" data-mode="pacar-yandere">Mode Pacar Yandere</div>
+    <div class="dropdown-item" data-mode="yoimiya">Mode Yoimiya</div>
+    <div class="dropdown-divider"></div>
+    <div class="dropdown-item" id="edit-prompt-btn">Edit Custom Prompt</div>
+    <div class="dropdown-item" id="edit-schedule-btn">Edit Jadwal Pelajaran</div>
+    <div class="dropdown-divider"></div>
+    <!-- TAMBAH INI -->
+    <div class="dropdown-item" id="notification-settings-btn">
+        <i class="fas fa-bell"></i> Pengaturan Notifikasi
+    </div>
+    <div class="dropdown-item" id="test-notification-btn">
+        <i class="fas fa-test"></i> Test Notifikasi
+    </div>
+    <div class="dropdown-divider"></div>
+    <div class="dropdown-item" data-mode="clear">Bersihkan Chat Ini</div>
+    <div class="dropdown-item" id="clear-all-history">Hapus Semua Riwayat</div>
+</div>
+                    </div>
+
+                    <button class="header-btn" id="themeToggle">
+                        <i class="fas fa-palette"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="chat-container" id="chatContainer">
+                <!-- Welcome screen shown when no messages -->
+                <div class="welcome-screen" id="welcomeScreen">
+                    <div class="welcome-icon">
+                        <img src="https://files.catbox.moe/70gv96.png" alt="Sanepa AI">
+                    </div>
+                    <h1 class="welcome-title">Halo! Saya Sanep AI</h1>
+                    <p class="welcome-subtitle">Asisten AI yang siap membantu Anda dengan berbagai pertanyaan dan tugas. Saya dapat membantu dengan menulis, pemecahan masalah, coding, analisis gambar, dan banyak lagi.</p>
+
+                    <div class="capabilities">
+                        <div class="capability-card">
+                            <i class="fas fa-lightbulb"></i>
+                            <div class="capability-title">Pemecahan Masalah</div>
+                            <div class="capability-desc">Dapat membantu memecahkan masalah kompleks dengan pendekatan logis.</div>
+                        </div>
+                        <div class="capability-card">
+                            <i class="fas fa-code"></i>
+                            <div class="capability-title">Pemrograman</div>
+                            <div class="capability-desc">Bantu menulis, debug, dan optimasi kode dalam berbagai bahasa.</div>
+                        </div>
+                        <div class="capability-card">
+                            <i class="fas fa-image"></i>
+                            <div class="capability-title">Analisis Gambar</div>
+                            <div class="capability-desc">Unggah gambar dan dapatkan analisis, deskripsi, atau saran.</div>
+                        </div>
+                        <div class="capability-card">
+                            <i class="fas fa-pen-fancy"></i>
+                            <div class="capability-title">Penulisan Kreatif</div>
+                            <div class="capability-desc">Bantu menulis konten kreatif, artikel, puisi, dan banyak lagi.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat messages will be added here dynamically -->
+            </div>
+
+            <!-- Permission Modal -->
+<!-- Notification Permission Modal -->
+<div id="notification-permission" class="modal-overlay" style="display: none;">
+    <div class="nano-banana-container" style="max-width: 500px;">
+        <div class="nano-banana-header">
+            <div class="nano-banana-title">🔔 Notifikasi Pengingat</div>
+            <button class="nano-banana-close" id="notification-permission-close">&times;</button>
+        </div>
+        <div style="padding: 20px; text-align: center;">
+            <i class="fas fa-bell" style="font-size: 3rem; color: var(--primary); margin-bottom: 15px;"></i>
+            <h3 style="margin-bottom: 10px;">Aktifkan Notifikasi?</h3>
+            <p style="margin-bottom: 20px; color: var(--text-light);">
+                Sanep AI ingin mengirimkan pengingat jadwal pelajaran setiap hari jam 5 pagi.
+                Anda akan mendapat notifikasi tentang jadwal hari ini.
+            </p>
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button class="nano-btn primary" id="enable-notifications">
+                    <i class="fas fa-check"></i> Izinkan
+                </button>
+                <button class="nano-btn secondary" id="skip-notifications">
+                    Nanti Saja
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea class="chat-input" id="chatInput" placeholder="Ketik pesan..." rows="1"></textarea>
+
+                    <div class="input-actions">
+                        <button class="action-btn" id="imageUploadBtn" title="Unggah gambar">
+                            <i class="fas fa-image"></i>
+                        </button>
+                        <input type="file" id="imageUploadInput" accept="image/*" style="display: none;">
+
+                        <button class="action-btn send-btn" id="sendBtn" title="Kirim pesan">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="mediaPreview" class="hidden"></div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Image Generation Modal -->
+<div class="modal-overlay" id="image-gen-modal">
+    <div class="nano-banana-container">
+        <div class="nano-banana-header">
+            <div class="nano-banana-title" id="image-gen-title">Generate Image</div>
+            <button class="nano-banana-close" id="image-gen-close">&times;</button>
+        </div>
+
+        <div class="nano-method-selector">
+            <select id="image-ratio">
+                <option value="1:1">1:1 (Square)</option>
+                <option value="16:9">16:9 (Widescreen)</option>
+                <option value="9:16">9:16 (Portrait)</option>
+                <option value="4:3">4:3 (Standard)</option>
+                <option value="3:4">3:4 (Vertical)</option>
+            </select>
+        </div>
+
+        <textarea id="image-prompt" class="nano-prompt-input" placeholder="Masukkan prompt untuk generate gambar... (contoh: beautiful girl wearing glasses, anime style)"></textarea>
+
+        <div class="nano-actions">
+            <button class="nano-btn primary" id="image-generate-btn">
+                <i class="fas fa-wand-magic-sparkles"></i> Generate Image
+            </button>
+            <button class="nano-btn secondary" id="image-clear-btn">
+                <i class="fas fa-trash"></i> Hapus
+            </button>
+        </div>
+
+
+
+        <div class="nano-loading" id="image-gen-loading">
+            <i class="fas fa-spinner fa-spin"></i>
+            <div class="loading-text">Generating image...</div>
+        </div>
+
+        <div id="image-gen-result" class="nano-comparison" style="display: none;">
+            <div class="comparison-item">
+                <h3>Generated Image</h3>
+                <img id="generated-image" class="comparison-image" alt="Generated Image" style="max-height: 400px; object-fit: contain;">
+                <div class="download-btn-container">
+                    <button class="nano-btn primary" id="download-image-btn">
+                        <i class="fas fa-download"></i> Download ke Galeri
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+    <!-- Nano Banana Modal -->
+    <div class="modal-overlay" id="nano-banana-modal">
+        <div class="nano-banana-container">
+            <div class="nano-banana-header">
+                <div class="nano-banana-title">Nano Banana AI</div>
+                <button class="nano-banana-close" id="nano-banana-close">&times;</button>
+            </div>
+
+            <div class="nano-method-selector">
+                <select id="nano-method">
+                    <option value="post">Upload Gambar (POST)</option>
+                    <option value="get">URL Gambar (GET)</option>
+                </select>
+            </div>
+
+            <div id="post-method">
+                <div class="nano-file-upload">
+                    <input type="file" id="nano-image" accept="image/*" style="display: none;">
+                    <label for="nano-image" id="nano-file-upload-label" class="nano-file-upload-label">
+                        <i class="fas fa-cloud-upload-alt"></i> Klik untuk memilih gambar atau tarik file ke sini
+                    </label>
+                </div>
+
+                <div class="nano-backup-option">
+                    <label>
+                        <input type="checkbox" id="nano-backup-option">
+                        <span>Gunakan Backup Mode (Upload ke CDN dulu)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="get-method" style="display: none;">
+                <input type="text" id="nano-url" class="nano-url-input" placeholder="Masukkan URL gambar...">
+            </div>
+
+            <textarea id="nano-prompt" class="nano-prompt-input" placeholder="Masukkan prompt AI untuk memproses gambar..."></textarea>
+
+            <div class="nano-actions">
+                <button class="nano-btn primary" id="nano-process-btn">
+                    <i class="fas fa-wand-magic-sparkles"></i> Proses dengan AI
+                </button>
+                <button class="nano-btn secondary" id="nano-clear-btn">
+                    <i class="fas fa-trash"></i> Hapus
+                </button>
+            </div>
+
+            <div class="nano-loading" id="nano-banana-loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div class="loading-text">Memproses gambar dengan AI...</div>
+            </div>
+
+            <div id="nano-banana-comparison" class="nano-comparison">
+                <div class="comparison-item">
+                    <h3>Gambar Asli</h3>
+                    <div style="display: flex; align-items: center; justify-content: center; height: 200px; color: #5f6368;">
+                        <i class="fas fa-image" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+                <div class="comparison-item">
+                    <h3>Hasil AI</h3>
+                    <div style="display: flex; align-items: center; justify-content: center; height: 200px; color: #5f6368;">
+                        <i class="fas fa-hourglass-half" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prompt Editor Modal -->
+    <div id="prompt-editor" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+        <div style="background: var(--surface-light); padding: 20px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--border-light);">
+                <div style="font-size: 1.2rem; font-weight: bold; color: var(--primary);">Edit Custom Prompt</div>
+                <button id="prompt-editor-close" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light);">&times;</button>
+            </div>
+            <textarea id="custom-prompt-textarea" style="width: 100%; min-height: 200px; padding: 10px; border: 1px solid var(--border-light); border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem; background: var(--surface-light); color: var(--text-light);" placeholder="Masukkan custom prompt Anda di sini..."></textarea>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button id="save-prompt-btn" style="background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Simpan</button>
+                <button id="cancel-prompt-btn" style="background: #ccc; color: #333; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle notification-icon"></i>
+        <div id="notificationMessage">Pesan notifikasi</div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div class="auth-modal" id="auth-modal">
+        <div class="auth-container">
+            <div class="auth-header">
+                <h2 class="auth-title" id="auth-title">Login</h2>
+            </div>
+            <form class="auth-form" id="login-form">
+                <div class="form-group">
+                    <input type="email" id="login-email" placeholder="Email" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="login-password" placeholder="Password" required>
+                </div>
+                <button type="submit" class="auth-btn">Login</button>
+            </form>
+            <form class="auth-form" id="register-form" style="display: none;">
+                <div class="form-group">
+                    <input type="text" id="register-name" placeholder="Nama" required>
+                </div>
+                <div class="form-group">
+                    <input type="email" id="register-email" placeholder="Email" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="register-password" placeholder="Password (min. 6 karakter)" required>
+                </div>
+                <button type="submit" class="auth-btn">Daftar</button>
+            </form>
+            <div class="auth-switch">
+                <p id="switch-to-register">Belum punya akun? <a onclick="showRegisterForm()">Daftar di sini</a></p>
+                <p id="switch-to-login" style="display: none;">Sudah punya akun? <a onclick="showLoginForm()">Login di sini</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===================================================================================
+        // 1. GLOBAL STATE & VARIABLES
+        // ===================================================================================
+        window.userSchedule = {
+            senin: ["07:00-08:30 Matematika", "08:30-10:00 Fisika", "10:30-12:00 Bahasa Indonesia", "13:00-14:30 Kimia", "15:00-16:30 Olahraga"],
+            selasa: ["07:00-09:00 Bahasa Inggris", "09:30-11:00 Sejarah", "12:00-13:30 Biologi", "14:00-15:30 Seni Budaya", "16:00-17:00 Ekstrakurikuler"],
+            rabu: ["07:00-08:30 Matematika", "09:00-10:30 TIK", "11:00-12:30 Ekonomi", "13:30-15:00 Sosiologi", "15:30-17:00 Bahasa Jawa"],
+            kamis: ["07:30-09:00 Fisika", "09:30-11:00 Kimia", "12:00-13:30 Geografi", "14:00-15:30 PKN", "16:00-17:00 Bimbingan Konseling"],
+            jumat: ["07:00-08:30 Agama", "09:00-11:00 Prakarya", "12:00-13:30 Bahasa Indonesia", "14:00-15:00 Sholat Jumat", "15:30-16:30 Pengembangan Diri"],
+            sabtu: ["08:00-10:00 Les Matematika", "10:30-12:00 Les Bahasa Inggris", "13:00-15:00 Kegiatan Sosial"],
+            minggu: ["Libur - Istirahat dan keluarga"]
+        };
+        window.userName = 'Pengguna';
+        window.userProfile = { name: 'Pengguna', conversations: {} };
+        let currentModel = 'gemini';
+        let currentMode = 'guru';
+        let currentChatId = null;
+        let chatImage = null; // Will hold the base64 string
+
+        const ADMIN_UID = "QUExq6hWclTXxmmeIx3fv6IDT3v2"; // Ganti dengan UID admin Anda
+        let auth, firestore;
+        window.currentUser = null;
+
+        // Load initial data from localStorage
+        try {
+            const storedSchedule = localStorage.getItem('sanepAI_userSchedule');
+            if (storedSchedule) window.userSchedule = JSON.parse(storedSchedule);
+        } catch (e) {
+            console.error("Error loading schedule from localStorage:", e);
+        }
+
+        // ===================================================================================
+        // 2. UI & HELPER FUNCTIONS
+        // ===================================================================================
+
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            if (!notification) return;
+            const notificationMessage = document.getElementById('notificationMessage');
+            const icon = notification.querySelector('.notification-icon');
+
+            notification.className = 'notification show';
+            notification.classList.add(type);
+            icon.className = `fas notification-icon ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-times-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}`;
+            notificationMessage.textContent = message;
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+        }
+
+        function updateThemeIcon(theme) {
+            const themeIcon = document.querySelector('#themeToggle i');
+            if (theme === 'dark' || theme === 'purple') {
+                themeIcon.className = 'fas fa-sun';
+            } else {
+                themeIcon.className = 'fas fa-palette';
+            }
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.body.getAttribute('data-theme');
+            let newTheme;
+            if (currentTheme === 'light') newTheme = 'dark';
+            else if (currentTheme === 'dark') newTheme = 'purple';
+            else newTheme = 'light';
+
+            document.body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('sanepAI_theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+
+        function closeMobileMenu() {
+            document.querySelector('.sidebar').classList.remove('open');
+        }
+
+        function initializeDynamicPadding() {
+            const chatContainer = document.getElementById('chatContainer');
+            const inputContainer = document.querySelector('.input-container');
+            if (!chatContainer || !inputContainer) return;
+
+            const observer = new ResizeObserver(() => {
+                chatContainer.style.paddingBottom = `${inputContainer.offsetHeight + 10}px`;
+            });
+            observer.observe(inputContainer);
+            chatContainer.style.paddingBottom = `${inputContainer.offsetHeight + 10}px`;
+        }
+
+        function updateSendButtonState() {
+            const chatInput = document.getElementById('chatInput');
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = chatInput.value.trim() === '' && !chatImage;
+        }
+
+        function addMessageToUI(content, role, imageUrl = null) {
+            const chatContainer = document.getElementById('chatContainer');
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            if (welcomeScreen) welcomeScreen.style.display = 'none';
+
+            const messageContainer = document.createElement('div');
+            messageContainer.className = `message-container ${role}-message`;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            if (role === 'user') {
+                avatar.textContent = getAvatarInitial(window.userName);
+            } else {
+                const logo = document.createElement('img');
+                logo.src = "https://files.catbox.moe/70gv96.png";
+                logo.alt = "Sanepa AI";
+                avatar.appendChild(logo);
+            }
+
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+
+            if (imageUrl) {
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.className = 'message-image';
+                messageContent.appendChild(img);
+            }
+
+            const messageText = document.createElement('div');
+            messageText.className = 'message-text';
+            messageText.innerHTML = formatCodeBlocks(content);
+            messageContent.appendChild(messageText);
+
+            messageContainer.appendChild(avatar);
+            messageContainer.appendChild(messageContent);
+            chatContainer.appendChild(messageContainer);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function formatCodeBlocks(text) {
+            const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+            return text.replace(codeBlockRegex, (match, lang, code) => {
+                const language = lang || 'plaintext';
+                const escapedCode = code.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                return `<div class="code-block-container">
+                          <div class="code-header">
+                            <span class="code-language">${language}</span>
+                            <button class="copy-code-btn"><i class="fas fa-copy"></i> Copy</button>
+                          </div>
+                          <pre><code class="language-${language} code-block">${escapedCode.trim()}</code></pre>
+                        </div>`;
+            });
+        }
+
+        function showLoginForm() {
+            document.getElementById('login-form').style.display = 'block';
+            document.getElementById('register-form').style.display = 'none';
+            document.getElementById('auth-title').textContent = 'Login';
+            document.getElementById('switch-to-register').style.display = 'block';
+            document.getElementById('switch-to-login').style.display = 'none';
+        }
+
+        function showRegisterForm() {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'block';
+            document.getElementById('auth-title').textContent = 'Daftar';
+            document.getElementById('switch-to-register').style.display = 'none';
+            document.getElementById('switch-to-login').style.display = 'block';
+        }
+
+        function openAuthModal() {
+            document.getElementById('auth-modal').classList.add('show');
+            showLoginForm();
+        }
+
+        function closeAuthModal() {
+            document.getElementById('auth-modal').classList.remove('show');
+        }
+
+        function getAvatarInitial(name) {
+            if (!name) return 'P';
+            const parts = name.split(' ');
+            if (parts.length > 1) {
+                return parts[0][0].toUpperCase() + parts[1][0].toUpperCase();
+            }
+            return name[0].toUpperCase();
+        }
+
+        async function updateUserProfileUI(user) {
+            const container = document.getElementById('user-profile-container');
+            if (user) {
+                // Logged-in user view
+                window.userName = user.displayName || 'Pengguna';
+                container.innerHTML = `
+                    <div class="user-profile" id="settings-menu-button">
+                        <div class="user-avatar">${getAvatarInitial(window.userName)}</div>
+                        <div class="user-name">${window.userName}</div>
+                    </div>`;
+            } else {
+                // Guest view
+                window.userName = 'Pengguna';
+                container.innerHTML = `<button class="new-chat-btn" onclick="openAuthModal()">Login / Daftar</button>`;
+            }
+            // Update user name in header and other places
+            const userNames = document.querySelectorAll('.user-name');
+            userNames.forEach(el => { el.textContent = window.userName; });
+
+            // Load history for the current user (or guest)
+            await loadChatHistory();
+        }
+
+        // ===================================================================================
+        // 3. CORE CHAT & DATA FUNCTIONS
+        // ===================================================================================
+
+        async function saveMessage(content, role, imageUrl = null) {
+            if (!currentChatId) {
+                console.error("Tidak ada ID obrolan saat ini. Memulai yang baru.");
+                startNewChat();
+            }
+
+            const message = {
+                content: content,
+                role: role,
+                timestamp: new Date().toISOString(),
+                ...(imageUrl && { image: imageUrl })
+            };
+
+            if (!window.userProfile.conversations[currentChatId]) {
+                window.userProfile.conversations[currentChatId] = {
+                    id: currentChatId,
+                    title: content.substring(0, 30) + '...',
+                    messages: [message],
+                    timestamp: new Date().toISOString()
+                };
+            } else {
+                window.userProfile.conversations[currentChatId].messages.push(message);
+                window.userProfile.conversations[currentChatId].timestamp = new Date().toISOString();
+            }
+
+            if (window.currentUser) {
+                const userRef = window.firestore.collection('users').doc(window.currentUser.uid);
+                await userRef.set({
+                    conversations: window.userProfile.conversations
+                }, { merge: true });
+            } else {
+                localStorage.setItem('sanepAI_userProfile', JSON.stringify(window.userProfile));
+            }
+        }
+
+        async function sendMessage() {
+            const chatInput = document.getElementById('chatInput');
+            const messageText = chatInput.value.trim();
+            if (messageText === '' && !chatImage) return;
+
+            const userMessage = messageText;
+            const imageToSend = chatImage;
+
+            addMessageToUI(userMessage, 'user', imageToSend);
+            await saveMessage(userMessage, 'user', imageToSend);
+
+            chatInput.value = '';
+            chatImage = null;
+            document.getElementById('mediaPreview').classList.add('hidden');
+            updateSendButtonState();
+
+            // Simulate bot response (replace with actual API call)
+            setTimeout(() => {
+                const botResponse = "Ini adalah respons dari bot. Fungsionalitas API belum terhubung.";
+                addMessageToUI(botResponse, 'bot');
+                saveMessage(botResponse, 'bot');
+            }, 1000);
+        }
+
+        function startNewChat() {
+            const chatContainer = document.getElementById('chatContainer');
+            const welcomeScreen = document.getElementById('welcomeScreen');
+
+            // Remove only message elements, not the welcome screen itself
+            const messageElements = chatContainer.querySelectorAll('.message-container');
+            messageElements.forEach(el => el.remove());
+
+            // Ensure the welcome screen is visible
+            if (welcomeScreen) {
+                welcomeScreen.style.display = 'flex';
+            }
+
+            currentChatId = 'chat_' + Date.now();
+            chatImage = null;
+            document.getElementById('mediaPreview').classList.add('hidden');
+            updateSendButtonState();
+            closeMobileMenu();
+            showNotification('Percakapan baru dimulai');
+        }
+
+        async function loadChatHistory() {
+            const chatHistoryEl = document.getElementById('chatHistory');
+            chatHistoryEl.innerHTML = '';
+            let conversations = {};
+
+            if (window.currentUser) {
+                // Logged-in user: data from Firestore is already in userProfile via loadUserData
+                conversations = window.userProfile.conversations || {};
+            } else {
+                // Guest user: load from localStorage
+                const localData = localStorage.getItem('sanepAI_userProfile');
+                if (localData) {
+                    conversations = JSON.parse(localData).conversations || {};
+                }
+            }
+            window.userProfile.conversations = conversations;
+
+            const sortedConversations = Object.values(conversations)
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            if (sortedConversations.length > 0) {
+                sortedConversations.forEach(chat => {
+                    const chatItem = document.createElement('div');
+                    chatItem.className = 'chat-item';
+                    chatItem.innerHTML = `<i class="fas fa-comment"></i> <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><div>${chat.title}</div><div style="font-size:0.8rem; color:#666;">${new Date(chat.timestamp).toLocaleDateString('id-ID')}</div></div>`;
+                    chatItem.addEventListener('click', () => loadChat(chat.id));
+                    chatHistoryEl.appendChild(chatItem);
+                });
+                loadChat(sortedConversations[0].id); // Load the most recent chat
+            } else {
+                startNewChat(); // If no history, start a new chat screen
+            }
+        }
+
+        function loadChat(chatId) {
+            const conversation = window.userProfile.conversations[chatId];
+            if (!conversation) {
+                showNotification('Gagal memuat percakapan.', 'error');
+                return;
+            }
+            const chatContainer = document.getElementById('chatContainer');
+
+            // Remove previous messages without destroying the welcome screen
+            const existingMessages = chatContainer.querySelectorAll('.message-container');
+            existingMessages.forEach(msg => msg.remove());
+
+            currentChatId = chatId;
+            conversation.messages.forEach(msg => {
+                addMessageToUI(msg.content, msg.role, msg.image);
+            });
+            closeMobileMenu();
+        }
+
+        async function clearAllHistory() {
+            if (confirm('Apakah Anda yakin ingin menghapus semua riwayat percakapan?')) {
+                window.userProfile.conversations = {};
+                if (window.currentUser) {
+                    await firestore.collection('users').doc(window.currentUser.uid).update({ conversations: {} });
+                } else {
+                    localStorage.setItem('sanepAI_userProfile', JSON.stringify(window.userProfile));
+                }
+                loadChatHistory();
+                showNotification('Semua riwayat telah dihapus.', 'success');
+            }
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                chatImage = e.target.result;
+                const mediaPreview = document.getElementById('mediaPreview');
+                mediaPreview.innerHTML = `
+                    <img src="${chatImage}" alt="Preview">
+                    <button onclick="removeImage()" class="media-preview-btn"><i class="fas fa-times"></i></button>`;
+                mediaPreview.classList.remove('hidden');
+                updateSendButtonState();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeImage() {
+            chatImage = null;
+            document.getElementById('imageUploadInput').value = '';
+            document.getElementById('mediaPreview').classList.add('hidden');
+            updateSendButtonState();
+        }
+
+        // ===================================================================================
+        // 4. FIREBASE AUTH & DATA FUNCTIONS
+        // ===================================================================================
+
+        function initializeAuthObserver() {
+            auth.onAuthStateChanged(async user => {
+                if (user) {
+                    window.currentUser = user;
+                    await loadUserData(user);
+                    closeAuthModal();
+                } else {
+                    window.currentUser = null;
+                    // For guests, load profile from localStorage
+                    const storedProfile = localStorage.getItem('sanepAI_userProfile');
+                    if (storedProfile) {
+                        window.userProfile = JSON.parse(storedProfile);
+                    } else {
+                        window.userProfile = { name: 'Pengguna', conversations: {} };
+                    }
+                    updateUserProfileUI(null);
+                }
+            });
+        }
+
+        async function loadUserData(user) {
+            const userRef = firestore.collection('users').doc(user.uid);
+            const doc = await userRef.get();
+            if (doc.exists) {
+                window.userProfile = doc.data();
+                window.userName = window.userProfile.name || user.displayName;
+            } else {
+                // New user, create profile
+                window.userName = user.displayName || 'Pengguna Baru';
+                window.userProfile = { name: window.userName, email: user.email, conversations: {} };
+                await userRef.set(window.userProfile);
+            }
+            localStorage.removeItem('sanepAI_userProfile'); // Clear guest data
+            updateUserProfileUI(user);
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                showNotification('Login berhasil!', 'success');
+            } catch (error) {
+                showNotification(`Login gagal: ${error.message}`, 'error');
+            }
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+            const name = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                await userCredential.user.updateProfile({ displayName: name });
+                // loadUserData will be called by onAuthStateChanged
+                showNotification('Pendaftaran berhasil!', 'success');
+            } catch (error) {
+                showNotification(`Pendaftaran gagal: ${error.message}`, 'error');
+            }
+        }
+
+        async function handleLogout() {
+            await auth.signOut();
+            window.userProfile = { name: 'Pengguna', conversations: {} }; // Reset state
+            showNotification('Anda telah logout.', 'info');
+        }
+
+
+        // ===================================================================================
+        // 5. DOMContentLoaded - INITIALIZATION & EVENT LISTENERS
+        // ===================================================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get DOM elements
+            const chatInput = document.getElementById('chatInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const imageUploadBtn = document.getElementById('imageUploadBtn');
+            const imageUploadInput = document.getElementById('imageUploadInput');
+            const newChatBtn = document.getElementById('newChatBtn');
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const sidebarClose = document.getElementById('sidebarClose');
+            const themeToggleBtn = document.getElementById('themeToggle');
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+            const authModal = document.getElementById('auth-modal');
+            const clearHistoryBtn = document.getElementById('clear-all-history');
+
+            // Attach Event Listeners
+            sendBtn.addEventListener('click', sendMessage);
+            chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+            chatInput.addEventListener('input', function() {
+                 this.style.height = 'auto';
+                 this.style.height = (this.scrollHeight) + 'px';
+                 updateSendButtonState();
+            });
+            imageUploadBtn.addEventListener('click', () => imageUploadInput.click());
+            imageUploadInput.addEventListener('change', handleImageUpload);
+            newChatBtn.addEventListener('click', startNewChat);
+            mobileMenuBtn.addEventListener('click', () => document.querySelector('.sidebar').classList.add('open'));
+            sidebarClose.addEventListener('click', closeMobileMenu);
+            themeToggleBtn.addEventListener('click', toggleTheme);
+            loginForm.addEventListener('submit', handleLogin);
+            registerForm.addEventListener('submit', handleRegister);
+            authModal.addEventListener('click', e => { if (e.target === authModal) closeAuthModal(); });
+            clearHistoryBtn.addEventListener('click', clearAllHistory);
+
+            // Initial App Setup
+            const savedTheme = localStorage.getItem('sanepAI_theme') || 'light';
+            document.body.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+            initializeDynamicPadding();
+            updateSendButtonState();
+
+            // Initialize Firebase
+            try {
+                if (typeof firebase !== 'undefined' && firebase.app) {
+                    firebase.initializeApp(firebaseConfig);
+                    auth = firebase.auth();
+                    firestore = firebase.firestore();
+                    initializeAuthObserver();
+                } else {
+                    throw new Error("Firebase SDK not loaded");
+                }
+            } catch (error) {
+                console.error("Firebase initialization error:", error);
+                showNotification("Gagal terhubung ke server. Fitur login tidak akan berfungsi.", "error");
+                updateUserProfileUI(null); // Fallback to guest mode
+            }
+        });
+    </script>
