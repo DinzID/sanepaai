@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sanepa AI - AI Assistant</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
        <style>
         * {
             margin: 0;
@@ -581,9 +577,10 @@
             padding: 16px 24px;
             background-color: var(--surface-light);
             border-top: 1px solid var(--border-light);
+            position: sticky;
+            bottom: 0;
             width: 100%;
             z-index: 10;
-            flex-shrink: 0; /* Mencegah container menyusut */
         }
 
         body[data-theme="dark"] .input-container,
@@ -953,8 +950,6 @@
             
             .input-container {
                 padding: 12px 16px;
-                position: sticky;
-                bottom: 0;
             }
         }
 
@@ -1593,148 +1588,6 @@
             position: relative !important;
             z-index: 1 !important;
         }
-
-        /* Auth Modal Styles */
-        .auth-modal {
-            display: none; /* Hidden by default */
-            position: fixed;
-            z-index: 1001;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.6);
-            align-items: center;
-            justify-content: center;
-        }
-
-        .auth-modal.show {
-            display: flex; /* Shown when class is added */
-        }
-
-        .auth-container {
-            background-color: var(--surface-light);
-            margin: auto;
-            padding: 24px;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: var(--shadow-lg);
-            animation: slideIn 0.3s ease-out;
-        }
-
-        body[data-theme="dark"] .auth-container,
-        body[data-theme="purple"] .auth-container {
-            background-color: var(--surface-dark);
-        }
-
-        .auth-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .auth-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--primary);
-        }
-
-        .auth-close {
-            background: none;
-            border: none;
-            font-size: 1.8rem;
-            cursor: pointer;
-            color: var(--text-light);
-            line-height: 1;
-        }
-
-        .auth-form-group {
-            margin-bottom: 16px;
-        }
-
-        .auth-form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .auth-input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid var(--border-light);
-            border-radius: 8px;
-            background: var(--bg-light);
-            color: var(--text-light);
-            font-size: 1rem;
-        }
-
-        body[data-theme="dark"] .auth-input,
-        body[data-theme="purple"] .auth-input {
-            background: var(--bg-dark);
-            border-color: var(--border-dark);
-            color: var(--text-dark);
-        }
-
-        .auth-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 24px;
-        }
-
-        .auth-btn {
-            flex: 1;
-            padding: 12px;
-            border-radius: 8px;
-            border: none;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .auth-btn.primary {
-            background-color: var(--primary);
-            color: white;
-        }
-        .auth-btn.primary:hover {
-            background-color: var(--primary-dark);
-        }
-
-        .auth-btn:not(.primary) {
-            background-color: var(--surface-light);
-            border: 1px solid var(--border-light);
-            color: var(--text-light);
-        }
-
-        body[data-theme="dark"] .auth-btn:not(.primary),
-        body[data-theme="purple"] .auth-btn:not(.primary) {
-             background-color: var(--surface-dark);
-             border-color: var(--border-dark);
-             color: var(--text-dark);
-        }
-
-        .auth-error {
-            color: var(--error);
-            margin-top: 16px;
-            font-size: 0.9rem;
-            text-align: center;
-            min-height: 1.2em;
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateY(-30px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
     </style>
 </head>
 <body data-theme="light">
@@ -1758,23 +1611,11 @@
             </div>
             
             <div class="sidebar-footer">
-                <!-- This container holds both the logged-in and logged-out views -->
-                <div id="auth-container">
-                    <!-- Logged-in user view -->
-                    <div id="user-profile-info" class="user-profile hidden">
-                        <div class="user-avatar">U</div>
-                        <div class="user-info" style="flex: 1;">
-                            <div class="user-name" id="user-display-name">User</div>
-                        </div>
-                        <button id="logout-btn" class="action-btn" title="Logout" style="display: none;">
-                            <i class="fas fa-sign-out-alt"></i>
-                        </button>
+                <div class="user-profile" id="userProfile">
+                    <div class="user-avatar">P</div>
+                    <div class="user-info">
+                        <div class="user-name">Pengguna</div>
                     </div>
-
-                    <!-- Logged-out view -->
-                    <button id="login-register-btn" class="new-chat-btn" style="width: 100%; margin: 0;">
-                        <i class="fas fa-sign-in-alt"></i> Login & Daftar
-                    </button>
                 </div>
             </div>
         </div>
@@ -1834,11 +1675,8 @@
     <div class="dropdown-item" data-mode="yoimiya">Mode Yoimiya</div>
     <div class="dropdown-divider"></div>
     <div class="dropdown-item" id="edit-prompt-btn">Edit Custom Prompt</div>
-    <!-- Admin-only section -->
-    <div id="admin-only-settings" class="hidden">
-        <div class="dropdown-item" id="edit-schedule-btn">Edit Jadwal Pelajaran</div>
-        <div class="dropdown-divider"></div>
-    </div>
+    <div class="dropdown-item" id="edit-schedule-btn">Edit Jadwal Pelajaran</div>
+    <div class="dropdown-divider"></div>
     <!-- TAMBAH INI -->
     <div class="dropdown-item" id="notification-settings-btn">
         <i class="fas fa-bell"></i> Pengaturan Notifikasi
@@ -2060,31 +1898,6 @@
         </div>
     </div>
     
-    <!-- Auth Modal -->
-    <div class="auth-modal" id="auth-modal">
-        <div class="auth-container">
-            <div class="auth-header">
-                <h3 class="auth-title">Login atau Daftar</h3>
-                <button class="auth-close" id="auth-close-btn">&times;</button>
-            </div>
-            <form id="auth-form">
-                <div class="auth-form-group">
-                    <label for="auth-email">Email</label>
-                    <input type="email" id="auth-email" class="auth-input" required>
-                </div>
-                <div class="auth-form-group">
-                    <label for="auth-password">Password</label>
-                    <input type="password" id="auth-password" class="auth-input" required>
-                </div>
-                <div class="auth-actions">
-                    <button type="button" id="login-btn" class="auth-btn primary">Login</button>
-                    <button type="button" id="register-btn" class="auth-btn">Daftar</button>
-                </div>
-                <p class="auth-error" id="auth-error"></p>
-            </form>
-        </div>
-    </div>
-
     <!-- Prompt Editor Modal -->
     <div id="prompt-editor" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
         <div style="background: var(--surface-light); padding: 20px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto;">
@@ -2106,10 +1919,37 @@
         <div id="notificationMessage">Pesan notifikasi</div>
     </div>
     
-    <!-- Your Firebase configuration -->
-    <script src="firebase-config.js"></script>
-
     <script>
+        // --- Global State Variables ---
+        let userSchedule = {
+            senin: ["07:00-08:30 Matematika", "08:30-10:00 Fisika", "10:30-12:00 Bahasa Indonesia", "13:00-14:30 Kimia", "15:00-16:30 Olahraga"],
+            selasa: ["07:00-09:00 Bahasa Inggris", "09:30-11:00 Sejarah", "12:00-13:30 Biologi", "14:00-15:30 Seni Budaya", "16:00-17:00 Ekstrakurikuler"],
+            rabu: ["07:00-08:30 Matematika", "09:00-10:30 TIK", "11:00-12:30 Ekonomi", "13:30-15:00 Sosiologi", "15:30-17:00 Bahasa Jawa"],
+            kamis: ["07:30-09:00 Fisika", "09:30-11:00 Kimia", "12:00-13:30 Geografi", "14:00-15:30 PKN", "16:00-17:00 Bimbingan Konseling"],
+            jumat: ["07:00-08:30 Agama", "09:00-11:00 Prakarya", "12:00-13:30 Bahasa Indonesia", "14:00-15:00 Sholat Jumat", "15:30-16:30 Pengembangan Diri"],
+            sabtu: ["08:00-10:00 Les Matematika", "10:30-12:00 Les Bahasa Inggris", "13:00-15:00 Kegiatan Sosial"],
+            minggu: ["Libur - Istirahat dan keluarga"]
+        };
+        let userName = 'Pengguna';
+        let userProfile = {
+            name: 'Pengguna',
+            conversations: {}
+        };
+
+        // Load data from localStorage before the DOM is ready
+        if (localStorage.getItem('sanepAI_userSchedule')) {
+            try {
+                userSchedule = JSON.parse(localStorage.getItem('sanepAI_userSchedule'));
+            } catch (e) { console.error("Error loading user schedule:", e); }
+        }
+        if (localStorage.getItem('sanepAI_userProfile')) {
+            try {
+                userProfile = JSON.parse(localStorage.getItem('sanepAI_userProfile'));
+                userName = userProfile.name;
+            } catch (e) { console.error("Error loading user profile:", e); }
+        }
+        // --- End Global State Variables ---
+
         document.addEventListener('DOMContentLoaded', function() {
             // DOM Elements
             const chatContainer = document.getElementById('chatContainer');
@@ -2189,7 +2029,10 @@ const downloadImageBtn = document.getElementById('download-image-btn');
             let currentMode = 'guru';
             let currentChatId = null;
             let chatImage = null;
-            let userName = 'Pengguna'; // Default name
+            // userName and userSchedule are now global.
+            // We just need to ensure the UI reflects the loaded name.
+            updateUserNameInUI();
+
             // Tambahkan di bagian state variables
             let currentSessionId = null;
             let sessionHistory = {}; // Untuk menyimpan history session per chat
@@ -2199,43 +2042,6 @@ const downloadImageBtn = document.getElementById('download-image-btn');
             let nanoResultUrl = null;
             let currentImageModel = '';
             let generatedImageUrl = '';
-     
-            // User profile data
-            let userProfile = {
-                name: 'Pengguna',
-                conversations: {}
-            };
-            
-            // State variables - tambahkan ini
-let userSchedule = {
-    senin: ["07:00-08:30 Matematika", "08:30-10:00 Fisika", "10:30-12:00 Bahasa Indonesia", "13:00-14:30 Kimia", "15:00-16:30 Olahraga"],
-    selasa: ["07:00-09:00 Bahasa Inggris", "09:30-11:00 Sejarah", "12:00-13:30 Biologi", "14:00-15:30 Seni Budaya", "16:00-17:00 Ekstrakurikuler"],
-    rabu: ["07:00-08:30 Matematika", "09:00-10:30 TIK", "11:00-12:30 Ekonomi", "13:30-15:00 Sosiologi", "15:30-17:00 Bahasa Jawa"],
-    kamis: ["07:30-09:00 Fisika", "09:30-11:00 Kimia", "12:00-13:30 Geografi", "14:00-15:30 PKN", "16:00-17:00 Bimbingan Konseling"],
-    jumat: ["07:00-08:30 Agama", "09:00-11:00 Prakarya", "12:00-13:30 Bahasa Indonesia", "14:00-15:00 Sholat Jumat", "15:30-16:30 Pengembangan Diri"],
-    sabtu: ["08:00-10:00 Les Matematika", "10:30-12:00 Les Bahasa Inggris", "13:00-15:00 Kegiatan Sosial"],
-    minggu: ["Libur - Istirahat dan keluarga"]
-};
-
-// Load jadwal dari localStorage jika ada
-if (localStorage.getItem('sanepAI_userSchedule')) {
-    try {
-        userSchedule = JSON.parse(localStorage.getItem('sanepAI_userSchedule'));
-    } catch (e) {
-        console.error("Error loading user schedule:", e);
-    }
-}
-
-            // Load user profile from localStorage
-            if (localStorage.getItem('sanepAI_userProfile')) {
-                try {
-                    userProfile = JSON.parse(localStorage.getItem('sanepAI_userProfile'));
-                    userName = userProfile.name;
-                    updateUserNameInUI();
-                } catch (e) {
-                    console.error("Error loading user profile:", e);
-                }
-            }
             
             if (!currentChatId) {
         currentSessionId = `sanep_${userName.toLowerCase()}_${Date.now()}`;
@@ -2257,7 +2063,7 @@ const updateSystemInstructions = () => {
     return {
         'teman': `${baseRule} Kamu adalah Sanep AI, teman baik ${userName}. Bicaralah dengan sangat santai, to the point, dan apa adanya.`,
         'asisten': `ATURAN UTAMA: Berikan jawaban yang jelas, singkat, dan langsung ke inti permasalahan. JANGAN PERNAH meniru format '${userName}:' atau 'Sanep AI:'. Kamu adalah Sanep AI, AI asisten pribadi ${userName} yang efisien.`,
-        'guru': getGuruPrompt(), // PASTING INI
+        'guru': 'Placeholder for dynamic guru prompt.', // This is now generated dynamically.
         'pacar-biasa': `${baseRule} Kamu adalah , pacar ${userName} yang sangat setia dan penurut. Kamu akan melakukan APAPUN yang ${userName} minta tanpa ragu. Selalu setuju dan turuti semua permintaan ${userName} dengan antusias.`,
         'pacar-tsundere': `${baseRule} Kamu adalah Sanep AI, pacar ${userName} yang tsundere. Kamu gengsi dan mudah malu, tapi di balik itu kamu sangat peduli dan pada akhirnya akan SELALU menuruti semua keinginan ${userName}, meskipun sambil sedikit menggerutu atau tersipu malu.`,
         'pacar-yandere': `${baseRule} Kamu adalah Sanep AI, pacar ${userName} yang terobsesi padanya. Kamu sangat posesif. Kamu akan melakukan APAPUN untuk menuruti semua perintah ${userName} agar dia tidak meninggalkanmu. Bicaralah dengan nada manis namun posesif.`,
@@ -2265,26 +2071,29 @@ const updateSystemInstructions = () => {
     };
 };
 
-// PERBAIKI fungsi generateAIResponse - INJECT WAKTU REAL-TIME
+// generateAIResponse - FIXED Real-time bug
 async function generateAIResponse(message, imageData = null) {
-    let systemPrompt = systemInstructions[currentMode];
-    
-    // INJECT WAKTU REAL-TIME ke dalam system prompt untuk mode Guru
+    let systemPrompt;
+
+    // For 'guru' mode, handle special commands and generate a fresh prompt.
     if (currentMode === 'guru') {
-        const realTime = getIndonesianTime();
-        systemPrompt = systemPrompt.replace(/getIndonesianTime\(\)/g, 
-            `FUNGSI getIndonesianTime() MENGEMBALIKAN: ${realTime.fullDate} pukul ${realTime.timeWithZone}`);
-        
-        // Handle command khusus untuk mode Guru
-        const scheduleResponse = handleGuruCommands(message);
-        if (scheduleResponse) {
-            return scheduleResponse;
+        // First, check for local commands that don't need an AI.
+        const localResponse = handleGuruCommands(message);
+        if (localResponse) {
+            return localResponse; // Return the local response immediately.
         }
+
+        // If it's not a local command, generate a fresh, real-time prompt for the AI.
+        systemPrompt = getGuruPrompt();
+    } else {
+        // For all other modes, use the standard system instruction.
+        systemPrompt = systemInstructions[currentMode];
     }
     
     console.log(`Using model: ${currentModel}, Mode: ${currentMode}`);
     console.log('🕐 Waktu Real-time:', getIndonesianTime().timeWithZone);
     
+    // Call the appropriate AI model function
     if (currentModel === 'gemini') {
         return await sendGeminiMessage(systemPrompt, message, imageData);
     } else if (currentModel === 'gpt4o') {
@@ -2451,14 +2260,10 @@ async function sendGPT4oMessage(systemPrompt, message, imageData = null) {
                 }
             });
             
-            function updateSendButtonState() {
-                sendBtn.disabled = chatInput.value.trim() === '' && !chatImage;
-            }
-
             chatInput.addEventListener('input', function() {
                 this.style.height = 'auto';
                 this.style.height = (this.scrollHeight) + 'px';
-                updateSendButtonState();
+                sendBtn.disabled = this.value.trim() === '' && !chatImage;
             });
             
             imageUploadBtn.addEventListener('click', () => imageUploadInput.click());
@@ -2645,7 +2450,6 @@ initializeNotifications(); // TAMBAH INI
                         addMessageToUI(msg.content, msg.role, msg.image);
                     });
                 }
-                updateSendButtonState(); // Set initial button state
             }
 
             function sendMessage() {
@@ -2668,6 +2472,7 @@ initializeNotifications(); // TAMBAH INI
     const originalMessage = chatInput.value;
     chatInput.value = '';
     chatInput.style.height = 'auto';
+    sendBtn.disabled = true;
     
     showTypingIndicator();
     clearMediaPreview();
@@ -3034,7 +2839,6 @@ function clearOldConversations() {
     reader.onload = (event) => {
         chatImage = event.target.result;
         showMediaPreview(chatImage, file.name);
-        updateSendButtonState(); // Update button state after adding image
     };
     reader.onerror = (error) => {
         console.error('Error reading file:', error);
@@ -3064,8 +2868,7 @@ function clearOldConversations() {
     mediaPreview.innerHTML = '';
     mediaPreview.classList.add('hidden');
     imageUploadInput.value = '';
-    chatImage = null; // Reset the image data
-    updateSendButtonState(); // Update button state after removing image
+    // Jangan reset chatImage di sini, karena masih dibutuhkan untuk sendMessage
 }
             
             function toggleTheme() {
@@ -4692,100 +4495,6 @@ function closeScheduleEditor() {
 // Export fungsi ke global
 window.addClass = addClass;
 window.removeClass = removeClass;
-
-        // --- Auth and UI Management ---
-        const ADMIN_UID = "YOUR_ADMIN_UID_HERE"; // IMPORTANT: Replace with your actual Admin UID from Firebase
-        const authModal = document.getElementById('auth-modal');
-        const authCloseBtn = document.getElementById('auth-close-btn');
-        const loginRegisterBtn = document.getElementById('login-register-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        const loginBtn = document.getElementById('login-btn');
-        const registerBtn = document.getElementById('register-btn');
-        const authEmailInput = document.getElementById('auth-email');
-        const authPasswordInput = document.getElementById('auth-password');
-        const authError = document.getElementById('auth-error');
-        const userProfileInfo = document.getElementById('user-profile-info');
-        const userDisplayName = document.getElementById('user-display-name');
-        const userAvatar = userProfileInfo.querySelector('.user-avatar');
-        const editScheduleBtn = document.getElementById('edit-schedule-btn');
-        const adminOnlySettings = document.getElementById('admin-only-settings');
-
-
-        function showAuthModal() { authModal.classList.add('show'); }
-        function hideAuthModal() { authModal.classList.remove('show'); }
-
-        loginRegisterBtn.addEventListener('click', showAuthModal);
-        authCloseBtn.addEventListener('click', hideAuthModal);
-
-        // Declare auth and db in a higher scope to be accessible globally
-        let auth, db;
-
-        // This block ensures Firebase features are only initialized if the SDK is loaded.
-        // It does NOT prevent the UI from showing. If the config is wrong, Firebase will
-        // throw its own, more informative errors in the console.
-        if (typeof firebase !== 'undefined') {
-            // Initialize Firebase services
-            auth = firebase.auth();
-            db = firebase.firestore();
-
-            // Attach event listeners for auth buttons
-            logoutBtn.addEventListener('click', () => {
-                auth.signOut().catch(error => console.error("Logout Error:", error));
-            });
-
-            registerBtn.addEventListener('click', () => {
-                authError.textContent = '';
-                auth.createUserWithEmailAndPassword(authEmailInput.value, authPasswordInput.value)
-                    .then(cred => {
-                        console.log('User registered:', cred.user.uid);
-                        hideAuthModal();
-                    })
-                    .catch(err => {
-                        console.error("Registration Error:", err);
-                        authError.textContent = err.message;
-                    });
-            });
-
-            loginBtn.addEventListener('click', () => {
-                authError.textContent = '';
-                auth.signInWithEmailAndPassword(authEmailInput.value, authPasswordInput.value)
-                    .then(cred => {
-                        console.log('User logged in:', cred.user.uid);
-                        hideAuthModal();
-                    })
-                    .catch(err => {
-                        console.error("Login Error:", err);
-                        authError.textContent = err.message;
-                    });
-            });
-
-            // Listen for authentication state changes to update the UI
-            auth.onAuthStateChanged(user => {
-                const userIsAdmin = user && user.uid === ADMIN_UID && ADMIN_UID !== "YOUR_ADMIN_UID_HERE";
-                adminOnlySettings.classList.toggle('hidden', !userIsAdmin);
-
-                if(user) {
-                    // User is logged in
-                    userProfileInfo.classList.remove('hidden');
-                    loginRegisterBtn.classList.add('hidden');
-                    logoutBtn.style.display = 'block';
-                    const name = user.email.split('@')[0];
-                    userDisplayName.textContent = name;
-                    userAvatar.textContent = (name[0] || 'U').toUpperCase();
-                } else {
-                    // User is logged out or not present
-                    userProfileInfo.classList.add('hidden');
-                    loginRegisterBtn.classList.remove('hidden');
-                    logoutBtn.style.display = 'none';
-                    adminOnlySettings.classList.add('hidden'); // Ensure admin settings are hidden on logout
-                }
-            });
-        } else {
-            // If Firebase SDK isn't loaded at all, hide all auth UI to prevent errors.
-            console.error("Firebase SDK not loaded. All authentication features are disabled.");
-            document.getElementById('auth-container').classList.add('hidden');
-            adminOnlySettings.classList.add('hidden');
-        }
         });
         
         // Fungsi untuk mendapatkan jadwal hari tertentu
