@@ -1593,6 +1593,148 @@
             position: relative !important;
             z-index: 1 !important;
         }
+
+        /* Auth Modal Styles */
+        .auth-modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-modal.show {
+            display: flex; /* Shown when class is added */
+        }
+
+        .auth-container {
+            background-color: var(--surface-light);
+            margin: auto;
+            padding: 24px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        body[data-theme="dark"] .auth-container,
+        body[data-theme="purple"] .auth-container {
+            background-color: var(--surface-dark);
+        }
+
+        .auth-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .auth-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .auth-close {
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: var(--text-light);
+            line-height: 1;
+        }
+
+        .auth-form-group {
+            margin-bottom: 16px;
+        }
+
+        .auth-form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .auth-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            background: var(--bg-light);
+            color: var(--text-light);
+            font-size: 1rem;
+        }
+
+        body[data-theme="dark"] .auth-input,
+        body[data-theme="purple"] .auth-input {
+            background: var(--bg-dark);
+            border-color: var(--border-dark);
+            color: var(--text-dark);
+        }
+
+        .auth-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .auth-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .auth-btn.primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        .auth-btn.primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .auth-btn:not(.primary) {
+            background-color: var(--surface-light);
+            border: 1px solid var(--border-light);
+            color: var(--text-light);
+        }
+
+        body[data-theme="dark"] .auth-btn:not(.primary),
+        body[data-theme="purple"] .auth-btn:not(.primary) {
+             background-color: var(--surface-dark);
+             border-color: var(--border-dark);
+             color: var(--text-dark);
+        }
+
+        .auth-error {
+            color: var(--error);
+            margin-top: 16px;
+            font-size: 0.9rem;
+            text-align: center;
+            min-height: 1.2em;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
     </style>
 </head>
 <body data-theme="light">
@@ -1692,8 +1834,11 @@
     <div class="dropdown-item" data-mode="yoimiya">Mode Yoimiya</div>
     <div class="dropdown-divider"></div>
     <div class="dropdown-item" id="edit-prompt-btn">Edit Custom Prompt</div>
-    <div class="dropdown-item" id="edit-schedule-btn">Edit Jadwal Pelajaran</div>
-    <div class="dropdown-divider"></div>
+    <!-- Admin-only section -->
+    <div id="admin-only-settings" class="hidden">
+        <div class="dropdown-item" id="edit-schedule-btn">Edit Jadwal Pelajaran</div>
+        <div class="dropdown-divider"></div>
+    </div>
     <!-- TAMBAH INI -->
     <div class="dropdown-item" id="notification-settings-btn">
         <i class="fas fa-bell"></i> Pengaturan Notifikasi
@@ -4549,7 +4694,7 @@ window.addClass = addClass;
 window.removeClass = removeClass;
 
         // --- Auth and UI Management ---
-        const ADMIN_UID = "fVdAMsA5s3gA9p0xJ8rY2ZtQW1i1"; // IMPORTANT: Replace with your actual Admin UID
+        const ADMIN_UID = "YOUR_ADMIN_UID_HERE"; // IMPORTANT: Replace with your actual Admin UID from Firebase
         const authModal = document.getElementById('auth-modal');
         const authCloseBtn = document.getElementById('auth-close-btn');
         const loginRegisterBtn = document.getElementById('login-register-btn');
@@ -4563,6 +4708,8 @@ window.removeClass = removeClass;
         const userDisplayName = document.getElementById('user-display-name');
         const userAvatar = userProfileInfo.querySelector('.user-avatar');
         const editScheduleBtn = document.getElementById('edit-schedule-btn');
+        const adminOnlySettings = document.getElementById('admin-only-settings');
+
 
         function showAuthModal() { authModal.classList.add('show'); }
         function hideAuthModal() { authModal.classList.remove('show'); }
@@ -4570,32 +4717,55 @@ window.removeClass = removeClass;
         loginRegisterBtn.addEventListener('click', showAuthModal);
         authCloseBtn.addEventListener('click', hideAuthModal);
 
-        if (typeof firebase !== 'undefined') {
-            const auth = firebase.auth();
-            const db = firebase.firestore();
+        // Declare auth and db in a higher scope to be accessible globally
+        let auth, db;
 
-            logoutBtn.addEventListener('click', () => auth.signOut());
+        // This block ensures Firebase features are only initialized if the SDK is loaded.
+        // It does NOT prevent the UI from showing. If the config is wrong, Firebase will
+        // throw its own, more informative errors in the console.
+        if (typeof firebase !== 'undefined') {
+            // Initialize Firebase services
+            auth = firebase.auth();
+            db = firebase.firestore();
+
+            // Attach event listeners for auth buttons
+            logoutBtn.addEventListener('click', () => {
+                auth.signOut().catch(error => console.error("Logout Error:", error));
+            });
 
             registerBtn.addEventListener('click', () => {
+                authError.textContent = '';
                 auth.createUserWithEmailAndPassword(authEmailInput.value, authPasswordInput.value)
                     .then(cred => {
+                        console.log('User registered:', cred.user.uid);
                         hideAuthModal();
-                        // You can add logic here to create initial user data in Firestore
                     })
-                    .catch(err => { authError.textContent = err.message; });
+                    .catch(err => {
+                        console.error("Registration Error:", err);
+                        authError.textContent = err.message;
+                    });
             });
 
             loginBtn.addEventListener('click', () => {
+                authError.textContent = '';
                 auth.signInWithEmailAndPassword(authEmailInput.value, authPasswordInput.value)
-                    .then(cred => hideAuthModal())
-                    .catch(err => { authError.textContent = err.message; });
+                    .then(cred => {
+                        console.log('User logged in:', cred.user.uid);
+                        hideAuthModal();
+                    })
+                    .catch(err => {
+                        console.error("Login Error:", err);
+                        authError.textContent = err.message;
+                    });
             });
 
+            // Listen for authentication state changes to update the UI
             auth.onAuthStateChanged(user => {
-                const userIsAdmin = user && user.uid === ADMIN_UID;
-                editScheduleBtn.style.display = userIsAdmin ? 'block' : 'none';
+                const userIsAdmin = user && user.uid === ADMIN_UID && ADMIN_UID !== "YOUR_ADMIN_UID_HERE";
+                adminOnlySettings.classList.toggle('hidden', !userIsAdmin);
 
                 if(user) {
+                    // User is logged in
                     userProfileInfo.classList.remove('hidden');
                     loginRegisterBtn.classList.add('hidden');
                     logoutBtn.style.display = 'block';
@@ -4603,13 +4773,18 @@ window.removeClass = removeClass;
                     userDisplayName.textContent = name;
                     userAvatar.textContent = (name[0] || 'U').toUpperCase();
                 } else {
+                    // User is logged out or not present
                     userProfileInfo.classList.add('hidden');
                     loginRegisterBtn.classList.remove('hidden');
                     logoutBtn.style.display = 'none';
+                    adminOnlySettings.classList.add('hidden'); // Ensure admin settings are hidden on logout
                 }
             });
         } else {
-            editScheduleBtn.style.display = 'none';
+            // If Firebase SDK isn't loaded at all, hide all auth UI to prevent errors.
+            console.error("Firebase SDK not loaded. All authentication features are disabled.");
+            document.getElementById('auth-container').classList.add('hidden');
+            adminOnlySettings.classList.add('hidden');
         }
         });
         

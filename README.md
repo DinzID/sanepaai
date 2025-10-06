@@ -15,9 +15,21 @@ Sanepa AI adalah aplikasi web asisten AI yang canggih dan kaya fitur yang diranc
 - **Tema Kustom**: Pilih antara tema Terang, Gelap, dan Ungu.
 - **Desain Responsif**: Antarmuka yang bersih dan modern yang berfungsi baik di desktop maupun perangkat seluler.
 
-## Penyiapan Firebase
+## Mode Guest (Tanpa Konfigurasi)
 
-Untuk menjalankan aplikasi ini dengan semua fitur otentikasinya, Anda perlu membuat proyek Firebase Anda sendiri. Ikuti langkah-langkah di bawah ini.
+Aplikasi ini dapat dijalankan secara langsung tanpa konfigurasi apa pun dalam **Mode Tamu (Guest Mode)**. Dalam mode ini:
+- Anda dapat menggunakan semua fitur chat inti dan beralih antar model AI.
+- Riwayat percakapan dan pengaturan Anda disimpan secara lokal di browser Anda (`localStorage`).
+- **Fitur berikut dinonaktifkan**:
+    - Login & Registrasi Pengguna
+    - Sinkronisasi Cloud untuk riwayat dan pengaturan
+    - Panel Admin
+
+Untuk mengaktifkan fitur-fitur ini, Anda harus mengikuti langkah-langkah penyiapan Firebase di bawah ini.
+
+## Penyiapan Firebase (Untuk Fitur Lengkap)
+
+Untuk mengaktifkan **semua fitur**, termasuk akun pengguna, sinkronisasi cloud, dan peran admin, Anda perlu membuat dan mengonfigurasi proyek Firebase Anda sendiri. Ikuti langkah-langkah di bawah ini.
 
 ### Langkah 1: Buat Proyek Firebase
 
