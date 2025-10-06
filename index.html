@@ -2728,12 +2728,12 @@ function saveMessage(content, role, imageData = null) {
         };
     }
     
-    // PERBAIKAN: Selalu update timestamp agar percakapan terbaru muncul di atas
-    userProfile.conversations[currentChatId].timestamp = new Date().toISOString();
-
     // Update lastSessionId
     userProfile.conversations[currentChatId].lastSessionId = currentSessionId;
     
+                // PERBAIKAN: Selalu update timestamp agar percakapan terbaru muncul di atas
+                userProfile.conversations[currentChatId].timestamp = new Date().toISOString();
+
     // Jangan simpan imageData di localStorage karena terlalu besar
     userProfile.conversations[currentChatId].messages.push({
         role: role,
