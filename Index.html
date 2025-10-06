@@ -2612,27 +2612,10 @@ function closeNotificationSettings() {
 
             // Initialize
             loadTheme();
-            loadChatHistory();
-          
-initializeChat();
-initializeNotifications(); // TAMBAH INI
+            loadChatHistory(); // Memuat riwayat untuk tamu/pengguna cache saat startup. Akan dijalankan ulang oleh auth observer.
+            initializeNotifications(); // TAMBAH INI
 
             // Functions
-            function initializeChat() {
-                if (!currentChatId) {
-                    currentChatId = 'chat_' + Date.now();
-                }
-                
-                // Load current conversation if it exists
-                const currentConversation = userProfile.conversations[currentChatId];
-                if (currentConversation && currentConversation.messages.length > 0) {
-                    welcomeScreen.style.display = 'none';
-                    currentConversation.messages.forEach(msg => {
-                        addMessageToUI(msg.content, msg.role, msg.image);
-                    });
-                }
-            }
-
             function sendMessage() {
     const message = chatInput.value.trim();
     if (message === '' && !chatImage) return;
@@ -3229,52 +3212,125 @@ if (typeof window.showNotification === 'undefined') {
 window.showNotification = showNotification;
 }
             
-            function loadChatHistory() {
-                chatHistory.innerHTML = '';
+// --- Consolidated Chat Loading Logic ---
 
-                const conversations = Object.values(userProfile.conversations)
-                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-                    .slice(0, 10); // Show only last 10 conversations
+/**
+ * Loads a specific chat conversation into the main view.
+ * It clears the existing chat, sets the current chat ID, and renders messages.
+ * @param {string} chatId The ID of the conversation to load.
+ * @param {Object} conversations The full conversations object from which to find the chat.
+ */
+function loadChat(chatId, conversations) {
+    const conversation = conversations[chatId];
+    if (!conversation) {
+        console.error(`Conversation with ID ${chatId} not found.`);
+        startNewChat(); // Fallback to a new chat if the target is not found
+        return;
+    }
 
-                conversations.forEach(chat => {
-                    const chatItem = document.createElement('div');
-                    chatItem.className = 'chat-item';
-                    chatItem.innerHTML = `
-                        <i class="fas fa-comment"></i>
-                        <div style="flex: 1;">
-                            <div style="font-weight: 500;">${chat.title}</div>
-                            <div style="font-size: 0.8rem; color: #666; margin-top: 2px;">
-                                ${new Date(chat.timestamp).toLocaleDateString('id-ID')}
-                            </div>
-                        </div>
-                    `;
+    console.log(`Loading chat: ${chatId}`);
+    chatContainer.innerHTML = ''; // Clear previous messages
+    welcomeScreen.style.display = 'none';
+    currentChatId = chatId;
 
-                    chatItem.addEventListener('click', () => {
-                        loadChat(chat.id);
-                    });
+    // Load messages into the UI
+    if (conversation.messages && conversation.messages.length > 0) {
+        conversation.messages.forEach(msg => {
+            addMessageToUI(msg.content, msg.role, msg.image);
+        });
+    }
 
-                    chatHistory.appendChild(chatItem);
-                });
+    // Reset session ID logic
+    currentSessionId = null;
+    const chatSessions = getSessionHistoryForChat(chatId);
+    if (chatSessions.length > 0) {
+        currentSessionId = chatSessions[chatSessions.length - 1].sessionId;
+        console.log(`Restored session ID ${currentSessionId} for chat ${chatId}`);
+    } else {
+        console.log(`No session history for chat ${chatId}, will start a new session.`);
+    }
+
+    closeMobileMenu();
+    // Do not show notification on initial load, only on manual click
+    // showNotification('Percakapan dimuat');
+}
+
+
+/**
+ * Fetches chat history from Firestore (logged-in) or localStorage (guest).
+ * It then populates the sidebar and automatically loads the most recent chat.
+ */
+async function loadChatHistory() {
+    console.log("Loading chat history...");
+    chatHistory.innerHTML = ''; // Clear UI
+    let conversations = {};
+
+    try {
+        if (currentUser) {
+            console.log("User is logged in, loading from Firestore.");
+            const userRef = firestore.collection('users').doc(currentUser.uid);
+            const doc = await userRef.get();
+            if (doc.exists && doc.data().conversations) {
+                conversations = doc.data().conversations;
             }
-
-            function loadChat(chatId, conversations) {
-                const conversation = conversations[chatId];
-                if (!conversation) return;
-
-                // Clear current chat UI
-                chatContainer.innerHTML = '';
-                welcomeScreen.style.display = 'none';
-                
-                currentChatId = chatId;
-
-                // Load messages into the UI
-                conversation.messages.forEach(msg => {
-                    addMessageToUI(msg.content, msg.role, msg.image);
-                });
-
-                closeMobileMenu();
-                showNotification('Percakapan dimuat');
+        } else {
+            console.log("User is a guest, loading from localStorage.");
+            const localData = localStorage.getItem('sanepAI_userProfile');
+            if (localData) {
+                const profile = JSON.parse(localData);
+                if (profile && profile.conversations) {
+                    conversations = profile.conversations;
+                }
             }
+        }
+    } catch (error) {
+        console.error("Error loading chat history data:", error);
+        showNotification("Gagal memuat riwayat obrolan.", "error");
+        // Don't stop execution, just proceed with an empty history
+    }
+
+    const sortedConversations = Object.values(conversations)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    if (sortedConversations.length > 0) {
+        console.log(`${sortedConversations.length} conversations found.`);
+        sortedConversations.forEach(chat => {
+            const chatItem = document.createElement('div');
+            chatItem.className = 'chat-item';
+            chatItem.dataset.chatId = chat.id;
+            chatItem.innerHTML = `
+                <i class="fas fa-comment"></i>
+                <div style="flex: 1;">
+                    <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${chat.title || 'Untitled Chat'}</div>
+                    <div style="font-size: 0.8rem; color: #888; margin-top: 2px;">
+                        ${new Date(chat.timestamp).toLocaleDateString('id-ID')}
+                    </div>
+                </div>
+            `;
+            chatItem.addEventListener('click', () => {
+                loadChat(chat.id, conversations);
+                // Highlight the active chat
+                document.querySelectorAll('.chat-item').forEach(item => item.style.backgroundColor = '');
+                chatItem.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+            });
+            chatHistory.appendChild(chatItem);
+        });
+
+        // *** AUTOMATICALLY LOAD THE LATEST CHAT ***
+        const latestChat = sortedConversations[0];
+        console.log(`Automatically loading latest chat: ${latestChat.id}`);
+        loadChat(latestChat.id, conversations);
+        // Highlight it
+         const latestChatItem = document.querySelector(`.chat-item[data-chat-id="${latestChat.id}"]`);
+        if (latestChatItem) {
+            latestChatItem.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+        }
+
+    } else {
+        console.log("No chat history found. Starting a new chat.");
+        startNewChat();
+    }
+}
             
             async function saveSchedule() {
                 const days = ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'];
