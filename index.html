@@ -2114,6 +2114,9 @@
                 updateUserProfileUI(null);
             }
 
+        // Set default UI state to guest before auth check
+        updateUserProfileUI(null);
+
             // DOM Elements
             const chatContainer = document.getElementById('chatContainer');
             const welcomeScreen = document.getElementById('welcomeScreen');
